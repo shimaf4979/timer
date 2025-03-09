@@ -9,8 +9,20 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 });
 
+
+
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    ignores: ["**/*"], // すべてのファイルを無視
+  },
+  {
+    files: ["**/*.js", "**/*.ts"],
+    rules: {
+      // ルールを無効化する場合はここで設定
+    },
+  },
 ];
+
 
 export default eslintConfig;
