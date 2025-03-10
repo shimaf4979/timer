@@ -61,13 +61,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ja_JP",
-    url: "https://your-domain.com",
+    url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/",
     siteName: "電子パンフレットアプリ",
     title: "電子パンフレットアプリ",
     description: "地図をインタラクティブに変える電子パンフレットアプリ",
     images: [
       {
-        url: "/api/og",
+        url: "/ffff.jpeg",
         width: 1200,
         height: 630,
         alt: "電子パンフレットアプリ",
