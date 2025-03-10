@@ -151,7 +151,7 @@ export default function HomePage() {
                   無料でお試し <ChevronRight className="h-4 w-4" />
                 </Button>
            </Link>
-              <Link href="http://localhost:3000/viewer?id=meikoudai1">
+              <Link href="https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/viewer?id=MEIKOUDAI_MAP">
               <Button size="lg" variant="outline" className="gap-2 border-sky-300 text-sky-700 hover:bg-sky-50 cursor-pointer">
                 デモを見る <Eye className="h-4 w-4" />
               </Button>
@@ -433,7 +433,7 @@ export default function HomePage() {
                 今すぐ始める <ArrowRight className="h-4 w-4" />
               </Button>
               </Link>
-              <Link href="http://localhost:3000/viewer?id=meikoudai1">
+              <Link href="https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/viewer?id=MEIKOUDAI_MAP">
               <Button size="lg" variant="outline" className="gap-2 border-sky-300 text-sky-700 hover:bg-sky-50 cursor-pointer">
                 デモを見る
               </Button>
