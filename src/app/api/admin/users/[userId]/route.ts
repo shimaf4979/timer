@@ -73,6 +73,7 @@ export async function DELETE(
 ) {
   const session = await auth();
   const { userId } = await context.params;
+  
   if (!session?.user) {
     return NextResponse.json(
       { error: '認証が必要です' },
