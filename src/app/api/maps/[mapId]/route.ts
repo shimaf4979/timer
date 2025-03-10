@@ -6,7 +6,7 @@ import { auth } from '@/auth';
 // 特定のマップを取得
 export async function GET(
   _request: NextRequest,
-  context: { params: { mapId: string } }
+  context: { params: Promise<{ mapId: string }> }
 ) {
   try {
     const { mapId } = await context.params;
@@ -38,9 +38,10 @@ export async function GET(
 // マップを更新
 export async function PATCH(
   request: NextRequest,
-  context: { params: { mapId: string } }
+  context: { params: Promise<{ mapId: string }> }
 ) {
   const session = await auth();
+  const { mapId } = await context.params;
   
   if (!session?.user) {
     return NextResponse.json(
@@ -54,7 +55,7 @@ export async function PATCH(
     const { data: existingMap, error: getError } = await supabaseAdmin
       .from('maps')
       .select('id, user_id')
-      .eq('map_id', context.params.mapId)
+      .eq('map_id', mapId)
       .single();
 
     if (getError || !existingMap) {
@@ -103,9 +104,10 @@ export async function PATCH(
 // マップを削除
 export async function DELETE(
   _request: NextRequest,
-  context: { params: { mapId: string } }
+  context: { params: Promise<{ mapId: string }> }
 ) {
   const session = await auth();
+  const { mapId } = await context.params;
   
   if (!session?.user) {
     return NextResponse.json(
@@ -119,7 +121,7 @@ export async function DELETE(
     const { data: existingMap, error: getError } = await supabaseAdmin
       .from('maps')
       .select('id, user_id')
-      .eq('map_id', context.params.mapId)
+      .eq('map_id', mapId)
       .single();
 
     if (getError || !existingMap) {

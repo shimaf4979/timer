@@ -1,7 +1,7 @@
 // app/viewer/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapData, Floor, Pin } from '@/types/map-types';
@@ -11,7 +11,8 @@ import Modal from '@/components/Modal';
 import PinInfo from '@/components/PinInfo';
 import NormalView from '@/components/NormalView';
 
-export default function ViewerPage() {
+// useSearchParamsを使用する部分を別コンポーネントに分離
+function ViewerContent() {
   const searchParams = useSearchParams();
   const mapId = searchParams.get('id') || '';
   
@@ -142,9 +143,9 @@ export default function ViewerPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <h2 className="text-xl font-semibold mb-2">エラー</h2>
-          <p className="text-gray-600 mb-4">
+          {/* <p className="text-gray-600 mb-4">
             {error || 'マップが見つかりません。'}
-          </p>
+          </p> */}
           <Link href="/" className="text-blue-500 hover:underline">
             トップページに戻る
           </Link>
@@ -231,47 +232,56 @@ export default function ViewerPage() {
           
           {/* 右側の表示エリア */}
           <div className="lg:col-span-3">
-  <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-    <h2 className="text-lg font-semibold mb-4 text-gray-700">
-      {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
-    </h2>
-    
-    {is3DView ? (
-      // 3D表示モード (改良版コンポーネントを使用)
-      <View3D 
-        floors={floors}
-        pins={pins}
-        frontFloorIndex={frontFloorIndex}
-        showArrows={showModalArrows}
-        onPrevFloor={showPrevFloor}
-        onNextFloor={showNextFloor}
-      />
-    ) : (
-      // 通常表示モード (新しいコンポーネントを使用)
-      <NormalView
-        floor={activeFloor}
-        pins={pins}
-      />
-    )}
-  </div>
-</div>
-</div>
-        
-        {/* ピン情報モーダル（閲覧専用のため編集・削除ボタンを表示しない） */}
-        <Modal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          title={selectedPin?.title || 'ピン情報'}
-        >
-          {selectedPin && (
-            <PinInfo
-              pin={selectedPin}
-              floors={floors}
-              isEditable={false}
-            />
-          )}
-        </Modal>
+            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+              <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
+              </h2>
+              
+              {/* 表示エリア */}
+              <div className="relative bg-gray-100 rounded-lg overflow-hidden flex justify-center items-center">
+                {is3DView ? (
+                  <View3D 
+                    floors={floors} 
+                    pins={pins}
+                    frontFloorIndex={frontFloorIndex}
+                    showArrows={showModalArrows}
+                    onNextFloor={showNextFloor}
+                    onPrevFloor={showPrevFloor}
+                  />
+                ) : (
+                  <NormalView
+                    floor={activeFloor}
+                    pins={pins.filter(pin => pin.floor_id === activeFloor?.id)}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+      
+      {/* ピン情報モーダル */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={selectedPin?.title || ''}
+      >
+        {selectedPin && <PinInfo pin={selectedPin} floors={floors} />}
+      </Modal>
     </main>
+  );
+}
+
+// メインのコンポーネント
+export default function ViewerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+        <p className="text-gray-600">読み込み中...</p>
+      </div>
+    </div>}>
+      <ViewerContent />
+    </Suspense>
   );
 }

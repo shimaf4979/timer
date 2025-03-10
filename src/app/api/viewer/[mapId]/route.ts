@@ -6,7 +6,7 @@ import { Pin } from '@/types/map-types';
 // マップ情報の取得 (認証不要・公開)
 export async function GET(
   _request: NextRequest,
-  context: { params: { mapId: string } }
+  context: { params: Promise<{ mapId: string }> }
 ) {
   try {
     const { mapId } = await context.params;

@@ -6,6 +6,7 @@ import { supabaseAdmin } from './lib/supabase';
 import type { NextAuthConfig } from 'next-auth';
 
 export const authConfig: NextAuthConfig = {
+  trustHost: true,
   pages: {
     signIn: '/login',
     error: '/login',
@@ -36,19 +37,22 @@ export const authConfig: NextAuthConfig = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // 明示的に文字列型であることを指定
+        const email = credentials.email as string;
+        
         // ユーザー検索
         const { data: user, error } = await supabaseAdmin
           .from('users')
           .select('*')
-          .eq('email', credentials.email.toLowerCase())
+          .eq('email', email.toLowerCase())
           .single();
 
         if (error || !user) return null;
 
         // パスワードの検証
         const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.password
+          credentials.password as string,
+          user.password as string
         );
 
         if (!isPasswordValid) return null;

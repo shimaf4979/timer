@@ -6,7 +6,7 @@ import { auth } from '@/auth';
 // 特定のマップのエリア一覧を取得
 export async function GET(
   _request: NextRequest,
-  context: { params: { mapId: string } }
+  context: { params: Promise<{ mapId: string }> }
 ) {
   try {
     const { mapId } = await context.params;
@@ -48,7 +48,7 @@ export async function GET(
 // エリアを作成
 export async function POST(
   request: NextRequest,
-  context: { params: { mapId: string } }
+  context: { params: Promise<{ mapId: string }> }
 ) {
   const session = await auth();
   const { mapId } = await context.params;

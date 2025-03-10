@@ -5,7 +5,7 @@ import { auth } from '@/auth';
 
 export async function POST(
   request: NextRequest,
-  context: { params: { floorId: string } }
+  context: { params: Promise<{ floorId: string }> }
 ) {
   const session = await auth();
   const { floorId } = await context.params;

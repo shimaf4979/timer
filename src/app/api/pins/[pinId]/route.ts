@@ -6,10 +6,10 @@ import { auth } from '@/auth';
 // ピン情報の更新
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { pinId: string } }
+  context: { params: Promise<{ pinId: string }> }
 ) {
   const session = await auth();
-  const pinId = await params.pinId;
+  const { pinId } = await context.params;
 
   if (!session?.user) {
     return NextResponse.json(
@@ -99,10 +99,10 @@ export async function PATCH(
 // ピンの削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { pinId: string } }
+  context: { params: Promise<{ pinId: string }> }
 ) {
   const session = await auth();
-  const pinId = await params.pinId;
+  const { pinId } = await context.params;
 
   if (!session?.user) {
     return NextResponse.json(

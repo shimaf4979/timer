@@ -13,7 +13,7 @@ interface PinProps {
 interface PinMarkerProps {
   pin: PinProps;
   onClick?: () => void;
-  containerRef?: React.RefObject<HTMLDivElement>;
+  containerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const PinMarker: React.FC<PinMarkerProps> = ({ pin, onClick, containerRef }) => {

@@ -6,7 +6,7 @@ import { auth } from '@/auth';
 // 特定のエリアのピン一覧を取得
 export async function GET(
   _request: NextRequest,
-  context: { params: { floorId: string } }
+  context: { params: Promise<{ floorId: string }> }
 ) {
   try {
     const { floorId } = await context.params;
@@ -34,7 +34,7 @@ export async function GET(
 // ピンを作成
 export async function POST(
   request: NextRequest,
-  context: { params: { floorId: string } }
+  context: { params: Promise<{ floorId: string }> }
 ) {
   const session = await auth();
   const { floorId } = await context.params;

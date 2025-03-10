@@ -1,4 +1,4 @@
-// app/api/admin/users/[userId]/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { auth } from '@/auth';
@@ -6,10 +6,10 @@ import { auth } from '@/auth';
 // ユーザーの役割を更新 (管理者のみ)
 export async function PATCH(
   request: NextRequest,
-  context: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   const session = await auth();
-  const { userId } = await context.params;
+  const { userId } = await params;
   
   if (!session?.user) {
     return NextResponse.json(
@@ -66,13 +66,13 @@ export async function PATCH(
   }
 }
 
-// ユーザーを削除 (管理者のみ)
-export async function DELETE(
-  request: NextRequest,
-  context: { params: { userId: string } }
-) {
+//   ユーザーを削除 (管理者のみ)
+  export async function DELETE(
+    request: NextRequest,
+    context: { params: Promise<{ userId: string }> }
+  ) {
   const session = await auth();
-  const { userId } = await context.params;
+  const {userId} = await context.params;
   
   if (!session?.user) {
     return NextResponse.json(

@@ -1,140 +1,21 @@
-// // app/login/page.tsx
-// 'use client';
-
-// import { useState } from 'react';
-// import { signIn } from 'next-auth/react';
-// import { useRouter, useSearchParams } from 'next/navigation';
-// import Link from 'next/link';
-
-// export default function Login() {
-//   const [email, setEmail] = useState('');
-//   const [password, setPassword] = useState('');
-//   const [error, setError] = useState('');
-//   const [loading, setLoading] = useState(false);
-//   const router = useRouter();
-//   const searchParams = useSearchParams();
-//   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
-//   const registered = searchParams.get('registered') === 'true';
-
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setError('');
-//     setLoading(true);
-
-//     try {
-//       const result = await signIn('credentials', {
-//         redirect: false,
-//         email,
-//         password,
-//         callbackUrl,
-//       });
-
-//       if (result?.error) {
-//         setError('メールアドレスまたはパスワードが正しくありません');
-//         setLoading(false);
-//         return;
-//       }
-
-//       // 成功したらダッシュボードへリダイレクト
-//       router.push(callbackUrl);
-//       router.refresh();
-//     } catch (error) {
-//       console.error('ログインエラー:', error);
-//       setError('ログイン中にエラーが発生しました');
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-//       <div className="max-w-md w-full space-y-8">
-//         <div>
-//           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-//             アカウントにログイン
-//           </h2>
-//           <p className="mt-2 text-center text-sm text-gray-600">
-//             または{' '}
-//             <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-//               新規登録
-//             </Link>
-//           </p>
-//         </div>
-        
-//         {registered && (
-//           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-//             登録が完了しました。ログインしてください。
-//           </div>
-//         )}
-        
-//         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-//           <div className="rounded-md shadow-sm -space-y-px">
-//             <div>
-//               <label htmlFor="email-address" className="sr-only">
-//                 メールアドレス
-//               </label>
-//               <input
-//                 id="email-address"
-//                 name="email"
-//                 type="email"
-//                 autoComplete="email"
-//                 required
-//                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-//                 placeholder="メールアドレス"
-//                 value={email}
-//                 onChange={(e) => setEmail(e.target.value)}
-//               />
-//             </div>
-//             <div>
-//               <label htmlFor="password" className="sr-only">
-//                 パスワード
-//               </label>
-//               <input
-//                 id="password"
-//                 name="password"
-//                 type="password"
-//                 autoComplete="current-password"
-//                 required
-//                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-//                 placeholder="パスワード"
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//               />
-//             </div>
-//           </div>
-
-//           {error && (
-//             <div className="text-red-500 text-sm text-center">{error}</div>
-//           )}
-
-//           <div>
-//             <button
-//               type="submit"
-//               disabled={loading}
-//               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300"
-//             >
-//               {loading ? 'ログイン中...' : 'ログイン'}
-//             </button>
-//           </div>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Mail, Lock, CheckCircle } from 'lucide-react';
 
-export default function Login() {
+// 検索パラメータを使用する部分を別コンポーネントに分離
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  
+  // useSearchParamsはここで使用
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   const registered = searchParams.get('registered') === 'true';
@@ -158,7 +39,6 @@ export default function Login() {
         return;
       }
 
-      // 成功したらダッシュボードへリダイレクト
       router.push(callbackUrl);
       router.refresh();
     } catch (error) {
@@ -307,5 +187,14 @@ export default function Login() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+// メインのコンポーネント
+export default function Login() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

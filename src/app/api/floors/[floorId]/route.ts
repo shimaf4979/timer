@@ -6,7 +6,7 @@ import { auth } from '@/auth';
 // エリアを削除
 export async function DELETE(
   _request: NextRequest,
-  context: { params: { floorId: string } }
+  context: { params: Promise<{ floorId: string }> }
 ) {
   const session = await auth();
   const { floorId } = await context.params;

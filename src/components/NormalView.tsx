@@ -63,7 +63,7 @@ const NormalView: React.FC<NormalViewProps> = ({
             description: pin.description
           }}
           onClick={() => window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }))}
-          containerRef={containerRef}
+          containerRef ={containerRef}
         />
       ))}
     </div>
