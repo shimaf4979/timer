@@ -81,36 +81,54 @@ const geistMono = Geist_Mono({
 //     images: ["/api/og"],
 //   },
 // }
+// export const metadata: Metadata = {
+//   title: "電子パンフレットアプリ",
+//   description:
+//     "既存の地図やフロアプランを活かしながら、インタラクティブな電子パンフレットに変換。訪問者に最高の体験を提供します。",
+//   openGraph: {
+//     type: "website",
+//     locale: "ja_JP",
+//     url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 必ず正しいURLを設定
+//     siteName: "電子パンフレットアプリ",
+//     title: "電子パンフレットアプリ - インタラクティブな地図",
+//     description:
+//       "既存の地図やフロアプランを活かして、訪問者にわかりやすいインタラクティブな電子パンフレットを提供。",
+//     images: [
+//       {
+//         url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 絶対URLにする
+//         width: 1200,
+//         height: 630,
+//         alt: "電子パンフレットアプリのプレビュー",
+//       },
+//     ],
+//   },
+//   twitter: {
+//     card: "summary_large_image",
+//     site: "@your_twitter_handle",
+//     title: "電子パンフレットアプリ - インタラクティブな地図",
+//     description:
+//       "既存の地図やフロアプランを活かし、訪問者にわかりやすい電子パンフレットを提供。",
+//     images: ["https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg"], // 画像を統一
+//   },
+// };
 export const metadata: Metadata = {
   title: "電子パンフレットアプリ",
   description:
-    "既存の地図やフロアプランを活かしながら、インタラクティブな電子パンフレットに変換。訪問者に最高の体験を提供します。",
+    "地図やフロアプランをインタラクティブに変える電子パンフレット。",
   openGraph: {
-    type: "website",
-    locale: "ja_JP",
-    url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 必ず正しいURLを設定
-    siteName: "電子パンフレットアプリ",
-    title: "電子パンフレットアプリ - インタラクティブな地図",
+    title: "電子パンフレットアプリ",
     description:
-      "既存の地図やフロアプランを活かして、訪問者にわかりやすいインタラクティブな電子パンフレットを提供。",
+      "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+    type: "website",
+    url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/", // 実際のURLに変更
     images: [
       {
-        url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 絶対URLにする
-        width: 1200,
-        height: 630,
-        alt: "電子パンフレットアプリのプレビュー",
+        url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 絶対URLに変更
       },
     ],
   },
-  twitter: {
-    card: "summary_large_image",
-    site: "@your_twitter_handle",
-    title: "電子パンフレットアプリ - インタラクティブな地図",
-    description:
-      "既存の地図やフロアプランを活かし、訪問者にわかりやすい電子パンフレットを提供。",
-    images: ["https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg"], // 画像を統一
-  },
 };
+
 
 
 
