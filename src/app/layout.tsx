@@ -54,6 +54,33 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+// export const metadata: Metadata = {
+//   title: "電子パンフレットアプリ",
+//   description:
+//     "既存の地図やフロアプランを活かしながら、インタラクティブな電子パンフレットに変換。訪問者に最高の体験を提供します。",
+//   openGraph: {
+//     type: "website",
+//     locale: "ja_JP",
+//     url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/",
+//     siteName: "電子パンフレットアプリ",
+//     title: "電子パンフレットアプリ",
+//     description: "地図をインタラクティブに変える電子パンフレットアプリ",
+//     images: [
+//       {
+//         url: "/ffff.jpeg",
+//         width: 1200,
+//         height: 630,
+//         alt: "電子パンフレットアプリ",
+//       },
+//     ],
+//   },
+//   twitter: {
+//     card: "summary_large_image",
+//     title: "電子パンフレットアプリ",
+//     description: "地図をインタラクティブに変える電子パンフレットアプリ",
+//     images: ["/api/og"],
+//   },
+// }
 export const metadata: Metadata = {
   title: "電子パンフレットアプリ",
   description:
@@ -61,26 +88,31 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ja_JP",
-    url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/",
+    url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 必ず正しいURLを設定
     siteName: "電子パンフレットアプリ",
-    title: "電子パンフレットアプリ",
-    description: "地図をインタラクティブに変える電子パンフレットアプリ",
+    title: "電子パンフレットアプリ - インタラクティブな地図",
+    description:
+      "既存の地図やフロアプランを活かして、訪問者にわかりやすいインタラクティブな電子パンフレットを提供。",
     images: [
       {
-        url: "/ffff.jpeg",
+        url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 絶対URLにする
         width: 1200,
         height: 630,
-        alt: "電子パンフレットアプリ",
+        alt: "電子パンフレットアプリのプレビュー",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "電子パンフレットアプリ",
-    description: "地図をインタラクティブに変える電子パンフレットアプリ",
-    images: ["/api/og"],
+    site: "@your_twitter_handle",
+    title: "電子パンフレットアプリ - インタラクティブな地図",
+    description:
+      "既存の地図やフロアプランを活かし、訪問者にわかりやすい電子パンフレットを提供。",
+    images: ["https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg"], // 画像を統一
   },
-}
+};
+
+
 
 export default function RootLayout({
   children,
