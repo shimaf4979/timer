@@ -124,10 +124,11 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1 }}
-              className="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 max-w-3xl"
+              className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-slate-900 max-w-3xl"
             >
-              あなたの<span className="text-sky-600">地図</span>を<br className="hidden sm:inline" />
-              インタラクティブに変える
+              あなたの<span className="text-sky-600">地図</span>をもっと
+              <br/>
+              <span className="text-sky-600">インタラクティブ</span>に
             </motion.h1>
 
             <motion.p
@@ -191,7 +192,7 @@ export default function HomePage() {
                     <span className="text-sm md:text-base">
                       {index === 0 && "1. 地図をアップロード"}
                       {index === 1 && "2. 情報を追加"}
-                      {index === 2 && "3. 閲覧者向け画面"}
+                      {index === 2 && "3. 閲覧者に公開"}
                     </span>
                   </button>
                 ))}
@@ -205,7 +206,7 @@ export default function HomePage() {
               transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
               className="relative rounded-xl overflow-hidden border border-sky-200 bg-white p-1 md:p-2"
             >
-              <TabsContent value="create" className="mt-0">
+              <TabsContent value="create" className="mt-0 p-3">
                 <div className="flex flex-col md:flex-row gap-8 items-center">
                   <div className="w-full md:w-1/2 relative h-[300px] md:h-[400px] rounded-lg overflow-hidden bg-sky-50">
                     <Image
@@ -241,7 +242,7 @@ export default function HomePage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="edit" className="mt-0">
+              <TabsContent value="edit" className="mt-0 p-3">
                 <div className="flex flex-col md:flex-row gap-8 items-center">
                   <div className="w-full md:w-1/2 relative h-[300px] md:h-[400px] rounded-lg overflow-hidden bg-sky-50">
                     <Image
@@ -277,7 +278,7 @@ export default function HomePage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="view" className="mt-0">
+              <TabsContent value="view" className="mt-0 p-3">
                 <div className="flex flex-col md:flex-row gap-8 items-center">
                   <div className="w-full md:w-1/2 relative h-[300px] md:h-[400px] rounded-lg overflow-hidden bg-sky-50">
                     <Image
@@ -366,21 +367,7 @@ export default function HomePage() {
                 description: "展示会や見本市の会場マップとして。ブースの位置や出展者情報を簡単に確認できます。",
                 icon: <Layers className="h-10 w-10 text-sky-600" />,
               },
-              {
-                title: "オフィスビル",
-                description: "企業のオフィスや施設の案内図として。来訪者が目的の部署や会議室を見つけやすくなります。",
-                icon: <PenLine className="h-10 w-10 text-sky-600" />,
-              },
-              {
-                title: "学校・キャンパス",
-                description: "大学や学校のキャンパスマップとして。新入生や来訪者が施設を見つけやすくなります。",
-                icon: <Map className="h-10 w-10 text-sky-600" />,
-              },
-              {
-                title: "医療施設",
-                description: "病院や医療センターの案内図として。患者さんが診療科や施設を迷わず見つけられます。",
-                icon: <Layers className="h-10 w-10 text-sky-600" />,
-              },
+      
             ].map((item, i) => (
               <motion.div
                 key={i}

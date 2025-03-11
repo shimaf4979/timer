@@ -1,6 +1,6 @@
-// components/View3D.tsx
+// components/ImprovedView3D.tsx
 import React, { useEffect, useState, useRef } from 'react';
-import PinMarker from '@/components/PinMarker';
+import ImprovedPinMarker from './ImprovedPinMarker';
 import ResponsiveImage from '@/components/ResponsiveImage';
 import { Pin, Floor } from '@/types/map-types';
 
@@ -15,7 +15,7 @@ interface View3DProps {
   isAddingPin?: boolean;
 }
 
-const View3D: React.FC<View3DProps> = ({
+const ImprovedView3D: React.FC<View3DProps> = ({
   floors,
   pins,
   frontFloorIndex,
@@ -27,16 +27,19 @@ const View3D: React.FC<View3DProps> = ({
 }) => {
   // コンテナへの参照
   const containerRef = useRef<HTMLDivElement>(null);
-  const floorRefs = useRef<{[key: string]: React.RefObject<HTMLDivElement | null>}>({});
+  const floorContainerRefs = useRef<{[key: string]: React.RefObject<HTMLDivElement>}>({});
 
   // 全ピンをエリアIDでグループ化
   const [pinsByFloor, setPinsByFloor] = useState<Record<string, Pin[]>>({});
+  
+  // 画像の読み込み状態を管理
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
 
   // 各エリアへのrefを初期化
   useEffect(() => {
     floors.forEach(floor => {
-      if (!floorRefs.current[floor.id]) {
-        floorRefs.current[floor.id] = React.createRef();
+      if (!floorContainerRefs.current[floor.id]) {
+        floorContainerRefs.current[floor.id] = React.createRef();
       }
     });
   }, [floors]);
@@ -59,6 +62,26 @@ const View3D: React.FC<View3DProps> = ({
     
     setPinsByFloor(groupedPins);
   }, [floors, pins]);
+  
+  // 画像が読み込まれたことを記録
+  const handleImageLoad = (floorId: string) => {
+    setLoadedImages(prev => ({
+      ...prev,
+      [floorId]: true
+    }));
+    
+    // 少し遅延させてピンを更新するイベントを発生させる
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 100);
+  };
+
+  // フロア要素のクリックハンドラー
+  const handleFloorClick = (e: React.MouseEvent<HTMLDivElement>, floorId: string) => {
+    if (isAddingPin && onImageClick) {
+      onImageClick(e, floorId);
+    }
+  };
 
   return (
     <div 
@@ -90,7 +113,7 @@ const View3D: React.FC<View3DProps> = ({
       )}
       
       {floors.length > 0 ? (
-        <div className="absolute inset-0 flex items-center justify-center transform-style-3d" style={{ perspective: '800px' }}>
+        <div className="absolute inset-0 flex items-center justify-center" style={{ perspective: '800px' }}>
           {/* エリアを並べ替えて表示（frontFloorIndexを基準に） */}
           {Array.from({ length: floors.length }).map((_, index) => {
             // フロントに表示するエリアからの相対的なインデックスを計算
@@ -101,69 +124,81 @@ const View3D: React.FC<View3DProps> = ({
             const floorPinsArray = pinsByFloor[floor.id] || [];
             
             // このエリアのrefを取得または作成
-            if (!floorRefs.current[floor.id]) {
-              floorRefs.current[floor.id] = React.createRef();
+            if (!floorContainerRefs.current[floor.id]) {
+              floorContainerRefs.current[floor.id] = React.createRef();
             }
+            
+            // z-indexの計算（レイヤーの重なり順）
+            const zIndex = floors.length - index;
             
             return (
               <div 
                 key={floor.id}
-                ref={floorRefs.current[floor.id]}
-                className="absolute inset-0 transition-all duration-500"
+                className="absolute inset-0 transition-all duration-500 floor-container"
                 style={{
                   transform: `
                     perspective(800px) 
                     rotateX(30deg) 
                     rotateZ(-10deg) 
-                    scale(1) 
+                    scale(${1 - index * 0.05}) 
                     translateY(${-40 + (index * -20)}px) 
                     translateX(${index * 30}px)
                     translateZ(${-index * 50}px)
                   `,
                   opacity: index === 0 ? 1 : (0.9 - index * 0.15 > 0.4 ? 0.9 - index * 0.15 : 0.4),
-                  zIndex: floors.length - index,
+                  zIndex: zIndex,
                   // 前面以外を少し下にずらして、次のエリアが少し見えるようにする
-                  marginTop: index === 0 ? 0 : `${index * 20}px` 
+                  marginTop: index === 0 ? 0 : `${index * 20}px`
                 }}
               >
                 <div 
-                  className="h-full w-full flex items-center justify-center border-2 border-gray-300 cursor-pointer rounded-lg overflow-hidden"
+                  className="h-full w-full border-2 border-gray-300 cursor-pointer rounded-lg overflow-hidden"
                   onClick={(e) => {
-                    if (index === 0 && isAddingPin && onImageClick) {
-                      onImageClick(e, floor.id);
+                    if (index === 0) {
+                      handleFloorClick(e, floor.id);
                     }
                   }}
                 >
-                  {floor.image_url ? (
-                    <ResponsiveImage
-                      src={floor.image_url}
-                      alt={`${floor.name}マップ`}
-                      className="w-full h-full"
-                    />
-                  ) : (
-                    <div className="text-center text-gray-500 w-full h-full flex items-center justify-center">
-                      <p>{floor.name} - 画像未設定</p>
-                    </div>
-                  )}
+                  <div 
+                    ref={floorContainerRefs.current[floor.id]}
+                    className="relative w-full h-full flex items-center justify-center"
+                  >
+                    {floor.image_url ? (
+                      <>
+                        <ResponsiveImage
+                          src={floor.image_url}
+                          alt={`${floor.name}マップ`}
+                          className="w-full h-full"
+                          onLoad={() => handleImageLoad(floor.id)}
+                        />
+                        
+                        {/* このエリアのピンを表示 - 画像が読み込まれた後のみ表示 */}
+                        {loadedImages[floor.id] && floorPinsArray.map((pin) => (
+                          <ImprovedPinMarker
+                            key={pin.id}
+                            pin={{
+                              id: pin.id,
+                              x: pin.x_position,
+                              y: pin.y_position,
+                              title: pin.title,
+                              description: pin.description
+                            }}
+                            onClick={() => window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }))}
+                            containerRef={floorContainerRefs.current[floor.id]}
+                            is3DView={true}
+                          />
+                        ))}
+                      </>
+                    ) : (
+                      <div className="text-center text-gray-500 w-full h-full flex items-center justify-center">
+                        <p>{floor.name} - 画像未設定</p>
+                      </div>
+                    )}
+                  </div>
                   
-                  {/* このエリアのピンを表示 */}
-                  {floorPinsArray.map((pin) => (
-                    <PinMarker
-                      key={pin.id}
-                      pin={{
-                        id: pin.id,
-                        x: pin.x_position,
-                        y: pin.y_position,
-                        title: pin.title,
-                        description: pin.description
-                      }}
-                      onClick={() => window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }))}
-                      containerRef={floorRefs.current[floor.id]}
-                    />
-                  ))}
-                </div>
-                <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded-md text-xs">
-                  {floor.name}
+                  <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded-md text-xs">
+                    {floor.name}
+                  </div>
                 </div>
               </div>
             );
@@ -180,4 +215,4 @@ const View3D: React.FC<View3DProps> = ({
   );
 };
 
-export default View3D;
+export default ImprovedView3D;

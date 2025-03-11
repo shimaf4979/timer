@@ -1,10 +1,12 @@
-// app/dashboard/page.tsx
+// app/dashboard/page.tsx - ダッシュボードページの改良版
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
+import { deleteMapWithRetry } from '@/utils/deleteHandlers';
 
 type Map = {
   id: string;
@@ -27,6 +29,11 @@ export default function Dashboard() {
     title: '',
     description: '',
   });
+  
+  // 削除確認モーダル用の状態
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [mapToDelete, setMapToDelete] = useState<Map | null>(null);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -95,30 +102,46 @@ export default function Dashboard() {
     }
   };
 
-  const deleteMap = async (mapId: string) => {
-    if (!window.confirm('このマップを削除してもよろしいですか？')) {
-      return;
-    }
+  // 削除確認モーダルを表示
+  const openDeleteModal = (map: Map) => {
+    setMapToDelete(map);
+    setDeleteModalOpen(true);
+  };
 
-    try {
-      const response = await fetch(`/api/maps/${mapId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'マップの削除に失敗しました');
-      }
-
-      // 成功したらマップ一覧を更新
-      fetchMaps();
-    } catch (error) {
-      if (error instanceof Error) {
+  // 実際の削除処理
+  const confirmDelete = () => {
+    if (!mapToDelete) return;
+    
+    setDeleteInProgress(true);
+    
+    // 削除ハンドラを使用
+    deleteMapWithRetry(
+      mapToDelete.id,
+      () => {
+        // 成功時：マップ一覧から削除したマップを除外
+        setMaps(maps.filter(m => m.id !== mapToDelete.id));
+        setDeleteModalOpen(false);
+        setMapToDelete(null);
+        setDeleteInProgress(false);
+        
+        // 成功メッセージを表示（一時的なトースト通知）
+        const notification = document.createElement('div');
+        notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+        notification.textContent = 'マップを削除しました';
+        document.body.appendChild(notification);
+        
+        // 3秒後に通知を削除
+        setTimeout(() => {
+          notification.remove();
+        }, 3000);
+      },
+      (error) => {
+        // エラー時
         setError(error.message);
-      } else {
-        setError('エラーが発生しました');
+        setDeleteInProgress(false);
+        // モーダルは閉じない（再試行できるように）
       }
-    }
+    );
   };
 
   if (loading && status !== 'loading') {
@@ -254,8 +277,9 @@ export default function Dashboard() {
                     閲覧
                   </Link>
                   <button
-                    onClick={() => deleteMap(map.id)}
+                    onClick={() => openDeleteModal(map)}
                     className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm cursor-pointer"
+                    data-map-id={map.id}
                   >
                     削除
                   </button>
@@ -271,6 +295,21 @@ export default function Dashboard() {
           </p>
         </div>
       )}
+      
+      {/* 削除確認モーダル */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!deleteInProgress) {
+            setDeleteModalOpen(false);
+            setMapToDelete(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        title="マップの削除"
+        message="このマップを削除しますか？この操作は元に戻せません。関連するすべてのエリアとピンも削除されます。"
+        itemName={mapToDelete?.title}
+      />
     </div>
   );
 }

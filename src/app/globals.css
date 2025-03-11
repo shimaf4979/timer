@@ -128,3 +128,158 @@
 button {
   cursor: pointer;
 }
+
+/* globals.cssに追加するアニメーション */
+
+/* globals.cssに追加するアニメーションとスタイル */
+
+/* ツールチップ用アニメーション */
+@keyframes tooltipAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* モーダル用アニメーション */
+@keyframes modalAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ピンの3D表示でのポインタイベント */
+@keyframes pinPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* ツールチップ上で文字選択を無効化 */
+.tooltip-content {
+  user-select: none;
+}
+
+/* アニメーションクラス */
+.animate-modal-appear {
+  animation: modalAppear 0.2s ease-out forwards;
+}
+
+.animate-tooltip-appear {
+  animation: tooltipAppear 0.15s ease-out forwards;
+}
+
+.animate-pin-pulse {
+  animation: pinPulse 1.5s infinite;
+}
+
+/* ピン関連のスタイル */
+.pin-normal {
+  z-index: 50;
+  pointer-events: auto !important;
+}
+
+.pin-3d {
+  z-index: 100;
+  pointer-events: auto !important;
+}
+
+/* ツールチップのポータルコンテナ */
+#tooltip-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 3D表示での変形スタイル */
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+/* ポインターイベント関連の修正 */
+.pointer-events-auto {
+  pointer-events: auto !important;
+}
+
+.pointer-events-none {
+  pointer-events: none !important;
+}
+
+/* 3Dビュー用のコンテナサイズ固定 */
+.floor-container {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+/* 吹き出しのz-index確保 */
+.modal-overlay {
+  z-index: 900;
+}
+
+.tooltip-overlay {
+  z-index: 9999;
+}
+
+/* アクティブなエリア強調表示 */
+.floor-active {
+  border-color: #3b82f6;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+/* モーダルの背景オーバーレイを半透明に */
+.modal-overlay,
+[aria-modal="true"] > div:first-child,
+.fixed.inset-0.bg-black {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+/* アニメーション */
+@keyframes modalAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-modal-appear {
+  animation: modalAppear 0.2s ease-out forwards;
+}
+
+/* モーダルコンテンツの最小スタイル保証 */
+[role="dialog"] [role="document"],
+[aria-modal="true"] > div > div > div {
+  background-color: white !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}

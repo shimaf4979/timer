@@ -24,6 +24,7 @@ const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   const [imageStyle, setImageStyle] = useState<React.CSSProperties>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const hasFiredLoadEvent = useRef(false);
 
   // 進捗更新関数
   const updateProgress = (progress: number) => {
@@ -37,28 +38,40 @@ const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
   useEffect(() => {
     if (!src) return;
     
+    let isMounted = true;
+    hasFiredLoadEvent.current = false;
+
     // キャッシュを確認して即時表示
     if (hasImageInCache(src)) {
       const cachedInfo = getFromImageCache(src);
-      if (cachedInfo) {
+      if (cachedInfo && isMounted) {
         setIsLoaded(true);
         updateProgress(100);
-        if (onLoad) onLoad();
-        
-        // 画像の読み込み完了イベントを発火
-        window.dispatchEvent(new CustomEvent('imageLoaded', { 
-          detail: { 
-            container: containerRef.current,
-            src: src,
-            ...cachedInfo
+
+        // onLoadコールバックを非同期で呼び出し（無限ループを避けるため）
+        setTimeout(() => {
+          if (onLoad && !hasFiredLoadEvent.current) {
+            onLoad();
+            hasFiredLoadEvent.current = true;
           }
-        }));
+          
+          // 画像の読み込み完了イベントを発火
+          if (containerRef.current && isMounted) {
+            window.dispatchEvent(new CustomEvent('imageLoaded', { 
+              detail: { 
+                container: containerRef.current,
+                src: src,
+                ...cachedInfo
+              }
+            }));
+          }
+        }, 0);
+        
         return;
       }
     }
     
     // キャッシュにない場合は新規読み込み
-    let isMounted = true;
     updateProgress(10); // 開始状態
     
     preloadAndCacheImage(src)
@@ -68,18 +81,28 @@ const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
         // 画像情報を更新
         setIsLoaded(true);
         updateProgress(100);
-        if (onLoad) onLoad();
-        
-        // 画像の読み込み完了イベントを発火
-        window.dispatchEvent(new CustomEvent('imageLoaded', { 
-          detail: { 
-            container: containerRef.current,
-            src: src,
-            ...imageInfo
+
+        // onLoadコールバックを非同期で呼び出し（無限ループを避けるため）
+        setTimeout(() => {
+          if (onLoad && !hasFiredLoadEvent.current) {
+            onLoad();
+            hasFiredLoadEvent.current = true;
           }
-        }));
+          
+          // 画像の読み込み完了イベントを発火
+          if (containerRef.current && isMounted) {
+            window.dispatchEvent(new CustomEvent('imageLoaded', { 
+              detail: { 
+                container: containerRef.current,
+                src: src,
+                ...imageInfo
+              }
+            }));
+          }
+        }, 0);
       })
       .catch(error => {
+        if (!isMounted) return;
         console.error('画像の読み込みエラー:', error);
         updateProgress(0);
       });
@@ -87,7 +110,7 @@ const ResponsiveImage: React.FC<ResponsiveImageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [src, onLoad, onProgressChange]);
+  }, [src]); // 依存配列にonLoadを含めないことで無限ループを防止
 
   // 画像を中央に配置し、コンテナに収まるようにサイズ調整
   useEffect(() => {

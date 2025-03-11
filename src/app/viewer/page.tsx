@@ -6,8 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapData, Floor, Pin } from '@/types/map-types';
 import PinList from '@/components/PinList';
-import View3D from '@/components/View3D';
-import Modal from '@/components/Modal';
+import ImprovedView3D from '@/components/ImprovedView3D';
+import ImprovedModal from '@/components/ImprovedModal';
 import PinInfo from '@/components/PinInfo';
 import NormalView from '@/components/NormalView';
 import LoadingIndicator from '@/components/LoadingIndicator';
@@ -123,17 +123,47 @@ function ViewerContent() {
   // エリアの変更
   const handleFloorChange = (floor: Floor) => {
     setActiveFloor(floor);
+    
+    // 3Dビューの場合、フロントインデックスも更新
+    if (is3DView) {
+      const index = floors.findIndex(f => f.id === floor.id);
+      if (index !== -1) {
+        setFrontFloorIndex(index);
+      }
+    }
   };
 
   // ピンをクリックしたときの処理
   const handlePinClick = (pin: Pin) => {
     setSelectedPin(pin);
     setIsModalOpen(true);
+    
+    // ピンがあるフロアをアクティブにする
+    const pinFloor = floors.find(floor => floor.id === pin.floor_id);
+    if (pinFloor && activeFloor?.id !== pinFloor.id) {
+      setActiveFloor(pinFloor);
+      
+      // 3Dビューの場合、フロントインデックスも更新
+      if (is3DView) {
+        const index = floors.findIndex(f => f.id === pinFloor.id);
+        if (index !== -1) {
+          setFrontFloorIndex(index);
+        }
+      }
+    }
   };
 
   // 3D表示モードを切り替え
   const toggle3DView = () => {
     setIs3DView(!is3DView);
+    
+    // 3Dビューに切り替えるとき、現在のアクティブフロアがフロント表示されるようにする
+    if (!is3DView && activeFloor) {
+      const index = floors.findIndex(f => f.id === activeFloor.id);
+      if (index !== -1) {
+        setFrontFloorIndex(index);
+      }
+    }
   };
 
   useEffect(() => {
@@ -143,6 +173,20 @@ function ViewerContent() {
       if (customEvent.detail) {
         setSelectedPin(customEvent.detail);
         setIsModalOpen(true);
+        
+        // ピンがあるフロアをアクティブにする
+        const pinFloor = floors.find(floor => floor.id === customEvent.detail.floor_id);
+        if (pinFloor && activeFloor?.id !== pinFloor.id) {
+          setActiveFloor(pinFloor);
+          
+          // 3Dビューの場合、フロントインデックスも更新
+          if (is3DView) {
+            const index = floors.findIndex(f => f.id === pinFloor.id);
+            if (index !== -1) {
+              setFrontFloorIndex(index);
+            }
+          }
+        }
       }
     };
   
@@ -151,7 +195,7 @@ function ViewerContent() {
     return () => {
       window.removeEventListener('pinClick', handleGlobalPinClick);
     };
-  }, []);
+  }, [floors, activeFloor, is3DView]);
 
   if (loading) {
     return (
@@ -195,8 +239,7 @@ function ViewerContent() {
         )}
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        {/* 表示エリア */}
-                                  {/* 左側のコントロールパネル */}
+          {/* 左側のコントロールパネル */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
               <h2 className="text-lg font-semibold mb-4 text-gray-700">フロア選択</h2>
@@ -250,24 +293,32 @@ function ViewerContent() {
                 {is3DView ? '通常表示に戻す' : '3D表示にする'}
               </button>
               
-
+              {/* ピン一覧 */}
+              <div className="mt-6">
+                <PinList 
+                  pins={pins} 
+                  floors={floors}
+                  activeFloor={activeFloor?.id || null} 
+                  onPinClick={handlePinClick}
+                  is3DView={is3DView}
+                />
+              </div>
             </div>
           </div>
-                                  {/* 右側の表示エリア */}
+          
+          {/* 右側の表示エリア */}
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
               <h2 className="text-lg font-semibold mb-4 text-gray-700">
                 {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
               </h2>
               
-
- 
-                        <div 
+              <div 
                 ref={containerRef}
                 className="relative bg-gray-100 rounded-lg overflow-hidden flex flex-col justify-center items-center"
               >
                 {is3DView ? (
-                  <View3D 
+                  <ImprovedView3D 
                     floors={floors} 
                     pins={pins}
                     frontFloorIndex={frontFloorIndex}
@@ -280,35 +331,22 @@ function ViewerContent() {
                     floor={activeFloor}
                     pins={pins.filter(pin => pin.floor_id === activeFloor?.id)}
                   />
-                  
                 )}
-                  </div>
-                              <div className="mt-6">
-                  <PinList 
-                    pins={pins} 
-                    floors={floors}
-                    activeFloor={activeFloor?.id || null} 
-                    onPinClick={handlePinClick}
-                    is3DView={is3DView}
-                  />
-              
-                </div>
-            </div>
               </div>
-
-          
-
+            </div>
+          </div>
         </div>
       </div>
       
       {/* ピン情報モーダル */}
-      <Modal
+      <ImprovedModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedPin?.title || ''}
+        size="md"
       >
         {selectedPin && <PinInfo pin={selectedPin} floors={floors} />}
-      </Modal>
+      </ImprovedModal>
     </main>
   );
 }

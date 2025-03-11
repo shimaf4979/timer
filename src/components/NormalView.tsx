@@ -1,6 +1,6 @@
 // components/NormalView.tsx
 import React, { useRef, useEffect, useState } from 'react';
-import PinMarker from '@/components/PinMarker';
+import ImprovedPinMarker from '@/components/ImprovedPinMarker';
 import ResponsiveImage from '@/components/ResponsiveImage';
 import { Pin, Floor } from '@/types/map-types';
 import { getExactImagePosition } from '@/utils/imageExactPositioning';
@@ -78,7 +78,7 @@ const NormalView: React.FC<NormalViewProps> = ({
             
             {/* 現在選択されている階のピンを表示 - 画像が読み込まれた後に表示 */}
             {imageLoaded && filteredPins.map((pin) => (
-              <PinMarker
+              <ImprovedPinMarker
                 key={pin.id}
                 pin={{
                   id: pin.id,
