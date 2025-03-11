@@ -17,6 +17,7 @@ import ImageUploader from '@/components/ImageUploader';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { getExactImagePosition } from '@/utils/imageExactPositioning';
 import { deletePinWithRetry, deleteFloorWithRetry, deleteMapWithRetry } from '@/utils/deleteHandlers';
+import EnhancedPinViewer from '@/components/EnhancedPinViewer';
 
 export default function MapEditPage() {
   const { data: session, status } = useSession();
@@ -755,12 +756,57 @@ const handleFloorChange = debounce((floor: Floor) => {
     };
   }, []);
 
+  const handleFloorClickIn3D = (e: React.MouseEvent<HTMLDivElement> & { exactPosition?: { x: number, y: number } }, floorId: string) => {
+    if (isAddingPin && e.exactPosition) {
+      // カスタムイベントから正確な位置を取得
+      setNewPinPosition(e.exactPosition);
+      setNewPinInfo({ title: '', description: '' });
+      setIsFormOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    // ピン編集イベント
+    const handleEditPin = (e: Event) => {
+      const customEvent = e as CustomEvent<Pin>;
+      if (customEvent.detail) {
+        const pin = customEvent.detail;
+        setEditingPin(pin);
+        setIsEditModalOpen(true);
+      }
+    };
+    
+    // ピン削除イベント
+    const handleDeletePin = (e: Event) => {
+      const customEvent = e as CustomEvent<Pin>;
+      if (customEvent.detail) {
+        const pin = customEvent.detail;
+        setDeleteConfirmState({
+          isOpen: true,
+          type: 'pin',
+          id: pin.id,
+          title: pin.title
+        });
+      }
+    };
+    
+    // イベントリスナーを追加
+    window.addEventListener('editPin', handleEditPin);
+    window.addEventListener('deletePin', handleDeletePin);
+    
+    // クリーンアップ
+    return () => {
+      window.removeEventListener('editPin', handleEditPin);
+      window.removeEventListener('deletePin', handleDeletePin);
+    };
+  }, []);
+
   const [isMobile, setIsMobile] = useState(false);
   
   // スマホ検出のためのuseEffect
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 640);
     };
     
     checkIfMobile();
@@ -771,6 +817,7 @@ const handleFloorChange = debounce((floor: Floor) => {
     };
   }, []);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   if (loading && status !== 'loading') {
     return (
       <div className="container mx-auto p-6">
@@ -1026,33 +1073,73 @@ const handleFloorChange = debounce((floor: Floor) => {
   </div>
 )}
                 </div>
+                <div 
+                ref={containerRef}
+                className="relative bg-gray-100 rounded-lg overflow-hidden flex flex-col justify-center items-center"
+              >
               
-              {is3DView ? (
-                // 3D表示モード
-                <ImprovedView3D 
-                  floors={floors}
-                  pins={pins}
-                  frontFloorIndex={frontFloorIndex}
-                  showArrows={showModalArrows}
-                  onPrevFloor={showPrevFloor}
-                  onNextFloor={showNextFloor}
-                  onImageClick={(e, floorId) => {
-                    if (isAddingPin && activeFloor && activeFloor.id === floorId) {
-                      handleImageClick(e, null);
-                    }
-                  }}
-                  isAddingPin={isAddingPin}
-                />
-              ) : (
-                // 通常表示モード
-                <div ref={normalViewRef}>
-                  <NormalView
-                    floor={activeFloor}
-                    pins={pins}
-                    onImageClick={(e, exact) => handleImageClick(e, exact)}
-                  />
-                </div>
-              )}
+                {is3DView ? (
+  // 3D表示モード
+  <div className="relative w-full h-96">
+    <ImprovedView3D 
+      floors={floors}
+      pins={[]} // ピンは空にして、EnhancedPinViewerで管理
+      frontFloorIndex={frontFloorIndex}
+      showArrows={showModalArrows}
+      onPrevFloor={showPrevFloor}
+      onNextFloor={showNextFloor}
+      onImageClick={(e, floorId) => {
+        if (isAddingPin && e.nativeEvent) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / rect.width * 100;
+          const y = (e.clientY - rect.top) / rect.height * 100;
+          
+          setNewPinPosition({ x, y });
+          setNewPinInfo({ title: '', description: '' });
+          setIsFormOpen(true);
+        }
+      }}
+      isAddingPin={isAddingPin}
+      isEditMode={true}
+    />
+    
+    {/* EnhancedPinViewerでピンを表示 */}
+    {pins.map((pin) => (
+      <EnhancedPinViewer
+        key={pin.id}
+        pin={pin}
+        floors={floors}
+        containerRef={containerRef}
+        is3DView={true}
+        isEditable={true}
+      />
+    ))}
+  </div>
+) : (
+  // 通常表示モード
+  <div ref={normalViewRef} className="relative w-full h-96">
+    <NormalView
+      floor={activeFloor}
+      pins={[]} // ピンは空にして、EnhancedPinViewerで管理
+      onImageClick={(e, exact) => handleImageClick(e, exact)}
+    />
+    
+    {/* 現在のフロアのピンのみを表示 */}
+    {activeFloor && pins
+      .filter(pin => pin.floor_id === activeFloor.id)
+      .map((pin) => (
+        <EnhancedPinViewer
+          key={pin.id}
+          pin={pin}
+          floors={floors}
+          containerRef={normalViewRef}
+          is3DView={false}
+          isEditable={true}
+        />
+      ))}
+  </div>
+)}
+</div>
               
               {/* ピン一覧 */}
               {showPinList && (

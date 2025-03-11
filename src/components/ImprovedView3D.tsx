@@ -1,6 +1,6 @@
 // components/ImprovedView3D.tsx
 import React, { useEffect, useState, useRef } from 'react';
-import ImprovedPinMarker from './ImprovedPinMarker';
+import ImprovedPinMarker3D from './ImprovedPinMarker3D';
 import ResponsiveImage from '@/components/ResponsiveImage';
 import { Pin, Floor } from '@/types/map-types';
 
@@ -12,7 +12,9 @@ interface View3DProps {
   onPrevFloor: () => void;
   onNextFloor: () => void;
   onImageClick?: (e: React.MouseEvent<HTMLDivElement>, floorId: string) => void;
+  onPinClick?: (pin: Pin) => void;
   isAddingPin?: boolean;
+  isEditMode?: boolean; // 編集モードかどうか
 }
 
 const ImprovedView3D: React.FC<View3DProps> = ({
@@ -23,7 +25,9 @@ const ImprovedView3D: React.FC<View3DProps> = ({
   onPrevFloor,
   onNextFloor,
   onImageClick,
+  onPinClick,
   isAddingPin = false,
+  isEditMode = false,
 }) => {
   // コンテナへの参照
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,14 +76,51 @@ const ImprovedView3D: React.FC<View3DProps> = ({
     
     // 少し遅延させてピンを更新するイベントを発生させる
     setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event('imageLoaded'));
     }, 100);
   };
 
   // フロア要素のクリックハンドラー
   const handleFloorClick = (e: React.MouseEvent<HTMLDivElement>, floorId: string) => {
     if (isAddingPin && onImageClick) {
-      onImageClick(e, floorId);
+      // 画像の位置と大きさを取得
+      const floorContainer = e.currentTarget;
+      const image = floorContainer.querySelector('img');
+      
+      if (image) {
+        const imageRect = image.getBoundingClientRect();
+        const containerRect = floorContainer.getBoundingClientRect();
+        
+        // 画像内でのクリック位置を確認
+        if (
+          e.clientX >= imageRect.left && 
+          e.clientX <= imageRect.right && 
+          e.clientY >= imageRect.top && 
+          e.clientY <= imageRect.bottom
+        ) {
+          // 画像内でのクリック位置（パーセンテージ）
+          const xPercent = ((e.clientX - imageRect.left) / imageRect.width) * 100;
+          const yPercent = ((e.clientY - imageRect.top) / imageRect.height) * 100;
+          
+          // カスタムイベントに位置情報を追加
+          const customEvent = {
+            ...e,
+            exactPosition: { x: xPercent, y: yPercent }
+          };
+          
+          // クリックハンドラーを呼び出す
+          onImageClick(customEvent as any, floorId);
+        }
+      }
+    }
+  };
+
+  // ピンクリックのハンドラー
+  const handlePinClick = (pin: Pin) => {
+    if (onPinClick) {
+      onPinClick(pin);
+    } else {
+      window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }));
     }
   };
 
@@ -131,20 +172,23 @@ const ImprovedView3D: React.FC<View3DProps> = ({
             // z-indexの計算（レイヤーの重なり順）
             const zIndex = floors.length - index;
             
+            // 3D変形の計算
+            const transform = `
+              perspective(800px) 
+              rotateX(30deg) 
+              rotateZ(-10deg) 
+              scale(${1 - index * 0.05}) 
+              translateY(${-40 + (index * -20)}px) 
+              translateX(${index * 30}px)
+              translateZ(${-index * 50}px)
+            `;
+            
             return (
               <div 
                 key={floor.id}
                 className="absolute inset-0 transition-all duration-500 floor-container"
                 style={{
-                  transform: `
-                    perspective(800px) 
-                    rotateX(30deg) 
-                    rotateZ(-10deg) 
-                    scale(${1 - index * 0.05}) 
-                    translateY(${-40 + (index * -20)}px) 
-                    translateX(${index * 30}px)
-                    translateZ(${-index * 50}px)
-                  `,
+                  transform: transform,
                   opacity: index === 0 ? 1 : (0.9 - index * 0.15 > 0.4 ? 0.9 - index * 0.15 : 0.4),
                   zIndex: zIndex,
                   // 前面以外を少し下にずらして、次のエリアが少し見えるようにする
@@ -161,7 +205,7 @@ const ImprovedView3D: React.FC<View3DProps> = ({
                 >
                   <div 
                     ref={floorContainerRefs.current[floor.id]}
-                    className="relative w-full h-full flex items-center justify-center"
+                    className="relative w-full h-full flex items-center justify-center image-container"
                   >
                     {floor.image_url ? (
                       <>
@@ -172,9 +216,9 @@ const ImprovedView3D: React.FC<View3DProps> = ({
                           onLoad={() => handleImageLoad(floor.id)}
                         />
                         
-                        {/* このエリアのピンを表示 - 画像が読み込まれた後のみ表示 */}
+                        {/* ピンを配置 - 画像が読み込まれた後のみ表示 */}
                         {loadedImages[floor.id] && floorPinsArray.map((pin) => (
-                          <ImprovedPinMarker
+                          <ImprovedPinMarker3D
                             key={pin.id}
                             pin={{
                               id: pin.id,
@@ -183,9 +227,9 @@ const ImprovedView3D: React.FC<View3DProps> = ({
                               title: pin.title,
                               description: pin.description
                             }}
-                            onClick={() => window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }))}
-                            containerRef={floorContainerRefs.current[floor.id]}
-                            is3DView={true}
+                            floorId={floor.id}
+                            onClick={() => handlePinClick(pin)}
+                            isEditable={isEditMode}
                           />
                         ))}
                       </>

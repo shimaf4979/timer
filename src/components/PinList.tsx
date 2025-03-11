@@ -1,5 +1,5 @@
 // components/PinList.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Pin, Floor } from '@/types/map-types';
 
 interface PinListProps {
@@ -10,11 +10,6 @@ interface PinListProps {
   is3DView: boolean;
 }
 
-const truncateText = (text: string, maxLength: number = 50) => {
-  if (!text) return '';
-  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
-};
-
 const PinList: React.FC<PinListProps> = ({ 
   pins, 
   floors, 
@@ -22,10 +17,24 @@ const PinList: React.FC<PinListProps> = ({
   onPinClick, 
   is3DView 
 }) => {
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  
+  // 表示するテキストを切り詰める関数
+  const truncateText = (text: string, maxLength: number = 50) => {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  };
+
   // エリア別にピンをフィルタリング
   const filteredPins = is3DView 
     ? pins 
     : pins.filter(pin => pin.floor_id === activeFloor);
+
+  // ピンクリックハンドラー
+  const handlePinClick = (pin: Pin) => {
+    setSelectedPinId(pin.id);
+    onPinClick(pin);
+  };
 
   // 表示するピンがない場合のメッセージ
   if (filteredPins.length === 0) {
@@ -52,15 +61,18 @@ const PinList: React.FC<PinListProps> = ({
           {filteredPins.map((pin) => {
             // ピンが属するエリアを取得
             const pinFloor = floors.find(f => f.id === pin.floor_id);
+            const isSelected = selectedPinId === pin.id;
             
             return (
               <button
                 key={pin.id}
-                onClick={() => onPinClick(pin)}
-                className="w-full text-left flex items-start py-3 px-2 border-b hover:bg-gray-50 transition-colors rounded"
+                onClick={() => handlePinClick(pin)}
+                className={`w-full text-left flex items-start py-3 px-2 border-b hover:bg-gray-50 transition-colors rounded
+                           ${isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
+                data-list-pin-id={pin.id}
               >
                 <div className="flex-shrink-0 pt-1">
-                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2 flex-shrink-0"></div>
+                  <div className={`w-3 h-3 rounded-full mr-2 flex-shrink-0 ${isSelected ? 'bg-blue-500' : 'bg-red-500'}`}></div>
                 </div>
                 <div className="flex-grow overflow-hidden">
                   <div className="font-medium text-sm truncate">{pin.title}</div>
