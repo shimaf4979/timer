@@ -105,7 +105,7 @@ const NormalView: React.FC<NormalViewProps> = ({
       ) : (
         <div className="flex items-center justify-center bg-gray-100 h-full">
           <p className="text-gray-500">
-            左側からエリアを選択してください
+            エリアを選択してください
           </p>
         </div>
       )}

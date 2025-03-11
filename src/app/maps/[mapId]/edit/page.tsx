@@ -930,9 +930,17 @@ export default function MapEditPage() {
            {/* 右側の表示エリア */}
            <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">
-                {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
-              </h2>
+            <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                              {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} `}
+                            </h2>
+                            <button
+                                onClick={() => setShowAddFloorForm(!showAddFloorForm)}
+                                className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded cursor-pointer"
+                              >
+                                {showAddFloorForm ? 'キャンセル' : 'エリア追加'}
+                              </button>
+            </div>
               
               {is3DView ? (
                 // 3D表示モード
