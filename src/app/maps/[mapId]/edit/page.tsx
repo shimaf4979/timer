@@ -934,12 +934,25 @@ export default function MapEditPage() {
                             <h2 className="text-lg font-semibold mb-4 text-gray-700">
                               {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} `}
                             </h2>
-                            <button
-                                onClick={() => setShowAddFloorForm(!showAddFloorForm)}
-                                className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded cursor-pointer"
-                              >
-                                {showAddFloorForm ? 'キャンセル' : 'エリア追加'}
-                              </button>
+                           <div className="flex space-x-2">
+                              <button
+                                  onClick={() => setShowAddFloorForm(!showAddFloorForm)}
+                                  className=" bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-md cursor-pointer"
+                                >
+                                  {showAddFloorForm ? 'キャンセル' : 'エリア追加'}
+                                </button>
+                                <button
+                    onClick={toggleAddPinMode}
+                    className={`px-4  rounded-md transition-colors ${
+                      isAddingPin 
+                      ? 'bg-red-500 hover:bg-red-600 text-white' 
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                    disabled={!activeFloor || !activeFloor.image_url}
+                  >
+                    {isAddingPin ? '終了' : 'ピンを追加'}
+                  </button>
+                           </div>
             </div>
               
               {is3DView ? (

@@ -196,49 +196,7 @@ function ViewerContent() {
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                         {/* 表示エリア */}
-                                  {/* 右側の表示エリア */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">
-                {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
-              </h2>
-              
-
- 
-                        <div 
-                ref={containerRef}
-                className="relative bg-gray-100 rounded-lg overflow-hidden flex flex-col justify-center items-center"
-              >
-                {is3DView ? (
-                  <View3D 
-                    floors={floors} 
-                    pins={pins}
-                    frontFloorIndex={frontFloorIndex}
-                    showArrows={showModalArrows}
-                    onNextFloor={showNextFloor}
-                    onPrevFloor={showPrevFloor}
-                  />
-                ) : (
-                  <NormalView
-                    floor={activeFloor}
-                    pins={pins.filter(pin => pin.floor_id === activeFloor?.id)}
-                  />
-                  
-                )}
-                  </div>
-                              <div className="mt-6">
-                  <PinList 
-                    pins={pins} 
-                    floors={floors}
-                    activeFloor={activeFloor?.id || null} 
-                    onPinClick={handlePinClick}
-                    is3DView={is3DView}
-                  />
-              
-                </div>
-            </div>
-              </div>
-          {/* 左側のコントロールパネル */}
+                                  {/* 左側のコントロールパネル */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
               <h2 className="text-lg font-semibold mb-4 text-gray-700">フロア選択</h2>
@@ -295,6 +253,49 @@ function ViewerContent() {
 
             </div>
           </div>
+                                  {/* 右側の表示エリア */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+              <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
+              </h2>
+              
+
+ 
+                        <div 
+                ref={containerRef}
+                className="relative bg-gray-100 rounded-lg overflow-hidden flex flex-col justify-center items-center"
+              >
+                {is3DView ? (
+                  <View3D 
+                    floors={floors} 
+                    pins={pins}
+                    frontFloorIndex={frontFloorIndex}
+                    showArrows={showModalArrows}
+                    onNextFloor={showNextFloor}
+                    onPrevFloor={showPrevFloor}
+                  />
+                ) : (
+                  <NormalView
+                    floor={activeFloor}
+                    pins={pins.filter(pin => pin.floor_id === activeFloor?.id)}
+                  />
+                  
+                )}
+                  </div>
+                              <div className="mt-6">
+                  <PinList 
+                    pins={pins} 
+                    floors={floors}
+                    activeFloor={activeFloor?.id || null} 
+                    onPinClick={handlePinClick}
+                    is3DView={is3DView}
+                  />
+              
+                </div>
+            </div>
+              </div>
+
           
 
         </div>

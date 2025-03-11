@@ -23,21 +23,21 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title }) => {
   }, [url]);
 
   // QRコードを画像としてダウンロード
-  const downloadQRCode = () => {
-    const canvas = document.getElementById('qr-code') as HTMLCanvasElement;
-    if (canvas) {
-      const pngUrl = canvas
-        .toDataURL('image/png')
-        .replace('image/png', 'image/octet-stream');
+  // const downloadQRCode = () => {
+  //   const canvas = document.getElementById('qr-code') as HTMLCanvasElement;
+  //   if (canvas) {
+  //     const pngUrl = canvas
+  //       .toDataURL('image/png')
+  //       .replace('image/png', 'image/octet-stream');
       
-      const downloadLink = document.createElement('a');
-      downloadLink.href = pngUrl;
-      downloadLink.download = `${title || 'qrcode'}.png`;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-    }
-  };
+  //     const downloadLink = document.createElement('a');
+  //     downloadLink.href = pngUrl;
+  //     downloadLink.download = `${title || 'qrcode'}.png`;
+  //     document.body.appendChild(downloadLink);
+  //     downloadLink.click();
+  //     document.body.removeChild(downloadLink);
+  //   }
+  // };
 
   return (
     <>
@@ -72,10 +72,12 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title }) => {
           
           <div className="flex space-x-4">
             <button
-              onClick={downloadQRCode}
+              onClick={() => {
+                window.open(fullUrl, '_blank');
+              }}
               className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
             >
-              ダウンロード
+              閲覧者ページへ
             </button>
             <button
               onClick={() => {
