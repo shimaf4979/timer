@@ -293,16 +293,7 @@ function ViewerContent() {
                 {is3DView ? '通常表示に戻す' : '3D表示にする'}
               </button>
               
-              {/* ピン一覧 */}
-              <div className="mt-6">
-                <PinList 
-                  pins={pins} 
-                  floors={floors}
-                  activeFloor={activeFloor?.id || null} 
-                  onPinClick={handlePinClick}
-                  is3DView={is3DView}
-                />
-              </div>
+
             </div>
           </div>
           
@@ -332,6 +323,16 @@ function ViewerContent() {
                     pins={pins.filter(pin => pin.floor_id === activeFloor?.id)}
                   />
                 )}
+              </div>
+                            {/* ピン一覧 */}
+                            <div className="mt-6">
+                <PinList 
+                  pins={pins} 
+                  floors={floors}
+                  activeFloor={activeFloor?.id || null} 
+                  onPinClick={handlePinClick}
+                  is3DView={is3DView}
+                />
               </div>
             </div>
           </div>

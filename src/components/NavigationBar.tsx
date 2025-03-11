@@ -68,7 +68,7 @@ export default function NavigationBar() {
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                     className="flex text-sm rounded-full focus:outline-none  "
                   >
-                    <span className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <span className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ">
                       {session.user?.name || session.user?.email}
                       <svg
                         className="-mr-1 ml-2 h-5 w-5"
@@ -136,7 +136,7 @@ export default function NavigationBar() {
           <div className="-mr-2 flex items-center sm:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none  "
             >
               <span className="sr-only">メニューを開く</span>
               <svg

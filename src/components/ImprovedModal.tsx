@@ -61,7 +61,7 @@ const ImprovedModal: React.FC<ModalProps> = ({
 
   // サイズに基づいてクラス名を設定
   const sizeClasses = {
-    sm: 'max-w-md',
+    sm: 'max-w-lg',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl'

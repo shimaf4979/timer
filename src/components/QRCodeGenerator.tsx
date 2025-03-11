@@ -35,22 +35,6 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title }) => {
     }
   }, [url]);
 
-  // QRコードを画像としてダウンロード
-  // const downloadQRCode = () => {
-  //   const canvas = document.getElementById('qr-code') as HTMLCanvasElement;
-  //   if (canvas) {
-  //     const pngUrl = canvas
-  //       .toDataURL('image/png')
-  //       .replace('image/png', 'image/octet-stream');
-      
-  //     const downloadLink = document.createElement('a');
-  //     downloadLink.href = pngUrl;
-  //     downloadLink.download = `${title || 'qrcode'}.png`;
-  //     document.body.appendChild(downloadLink);
-  //     downloadLink.click();
-  //     document.body.removeChild(downloadLink);
-  //   }
-  // };
 
   return (
     <>
@@ -68,6 +52,7 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title }) => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         title="閲覧用QRコード"
+
       >
         <div className="flex flex-col items-center">
           <div className="flex justify-center mb-4 bg-white p-4 rounded">

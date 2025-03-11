@@ -818,16 +818,16 @@ export default function MapEditPage() {
            {/* 右側の表示エリア */}
            <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-gray-700">
+            <h2 className="text-lg font-semibold text-gray-700 mb-2">
                   {is3DView ? '3D表示(ベータ版)' : `${activeFloor?.name || 'エリアを選択してください'} `}
                 </h2>
-                <div className="flex space-x-2">
+              <div className="flex justify-start items-center mb-4 gap-2">
+               
                   <button
                     onClick={() => setShowAddFloorForm(!showAddFloorForm)}
                     className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-md cursor-pointer"
                   >
-                    {showAddFloorForm ? 'キャンセル' : 'エリア追加'}
+                    {showAddFloorForm ? 'キャンセル' : isMobile ? 'エリア追加' : 'エリア追加'}
                   </button>
                   <button
                     onClick={toggleAddPinMode}
@@ -838,9 +838,11 @@ export default function MapEditPage() {
                     }`}
                     disabled={!activeFloor || !activeFloor.image_url}
                   >
-                    {isAddingPin ? 'ピン追加終了' : 'ピンを追加'}
+                    {isAddingPin 
+                      ? (isMobile ? '終了' : 'ピン追加終了') 
+                      : (isMobile ? 'ピン追加' : 'ピンを追加')}
                   </button>
-                </div>
+                
               </div>
                   {/* エリア選択 */}
                   <div className="mb-6">
@@ -916,14 +918,14 @@ export default function MapEditPage() {
                       <span>{floor.name}</span>
                     </div>
                     
-                    <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex " onClick={(e) => e.stopPropagation()}>
                       <ImageUploader
                         floorId={floor.id}
                         onUploadComplete={(imageUrl) => handleImageUpload(floor.id, imageUrl)}
                         onUploadError={(message) => setError(message)}
                         currentImageUrl={floor.image_url}
-                        buttonText={floor.image_url ? '変更' : '画像追加'}
-                        className="px-3 py-2 rounded text-sm"
+                        buttonText={floor.image_url ? (isMobile ? '変更' : '画像変更') : (isMobile ? '追加' : '画像追加')}
+                        className="px-3  rounded text-sm"
                       />
                       <button
                         type="button"
@@ -932,7 +934,7 @@ export default function MapEditPage() {
                           e.stopPropagation();
                           handleDeleteFloor(floor.id, floor.name);
                         }}
-                        className="mx-3 px-2 py-1 bg-red-400 text-white rounded text-sm hover:bg-red-200 cursor-pointer"
+                        className=" px-2 bg-red-400 text-white rounded text-sm hover:bg-red-200 cursor-pointer"
                         data-floor-id={floor.id}
                       >
                         削除

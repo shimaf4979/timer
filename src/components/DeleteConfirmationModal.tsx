@@ -26,7 +26,7 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="absolute inset-0 bg-black bg-opacity-40 backdrop-blur-sm"
+        className="absolute inset-0 bg-opacity-40 backdrop-blur-sm"
         aria-hidden="true"
       ></div>
       

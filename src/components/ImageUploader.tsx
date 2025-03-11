@@ -146,7 +146,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
               : 'bg-blue-500 text-white hover:bg-blue-600'
           }`}
         >
-          {currentImageUrl ? '画像を変更' : buttonText}
+          {currentImageUrl ? '変更' : buttonText}
         </button>
       )}
     </div>
