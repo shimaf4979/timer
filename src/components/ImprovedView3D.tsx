@@ -27,7 +27,7 @@ const ImprovedView3D: React.FC<View3DProps> = ({
 }) => {
   // コンテナへの参照
   const containerRef = useRef<HTMLDivElement>(null);
-  const floorContainerRefs = useRef<{[key: string]: React.RefObject<HTMLDivElement>}>({});
+  const floorContainerRefs = useRef<{[key: string]: React.RefObject<HTMLDivElement | null>}>({});
 
   // 全ピンをエリアIDでグループ化
   const [pinsByFloor, setPinsByFloor] = useState<Record<string, Pin[]>>({});
