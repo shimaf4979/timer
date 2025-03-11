@@ -1,7 +1,7 @@
 // app/viewer/page.tsx
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapData, Floor, Pin } from '@/types/map-types';
@@ -10,6 +10,8 @@ import View3D from '@/components/View3D';
 import Modal from '@/components/Modal';
 import PinInfo from '@/components/PinInfo';
 import NormalView from '@/components/NormalView';
+import LoadingIndicator from '@/components/LoadingIndicator';
+import { getFromImageCache, preloadAndCacheImage } from '@/utils/imageCache';
 
 // useSearchParamsを使用する部分を別コンポーネントに分離
 function ViewerContent() {
@@ -24,8 +26,12 @@ function ViewerContent() {
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [showModalArrows, setShowModalArrows] = useState(true);
+  
+  // コンテナへの参照
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // フロントに表示するエリアのインデックスを変更
   const [frontFloorIndex, setFrontFloorIndex] = useState(0);
@@ -58,6 +64,7 @@ function ViewerContent() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setLoadingProgress(10); // 開始時の進捗表示
         
         // APIからマップデータを取得
         const response = await fetch(`/api/viewer/${mapId}`);
@@ -66,6 +73,8 @@ function ViewerContent() {
           const errorData = await response.json();
           throw new Error(errorData.error || 'データの取得に失敗しました');
         }
+        
+        setLoadingProgress(50); // データ取得完了
         
         const data = await response.json();
         
@@ -79,6 +88,26 @@ function ViewerContent() {
           setActiveFloor(data.floors[0]);
         }
         
+        setLoadingProgress(70); // データ処理完了
+        
+        // 画像の事前読み込み
+        if (data.floors && data.floors.length > 0) {
+          const preloadPromises = data.floors
+            .filter((floor: Floor) => floor.image_url) // 画像URLがあるフロアのみ
+            .map((floor: Floor) => {
+              return preloadAndCacheImage(floor.image_url || '')
+                .catch(err => {
+                  console.warn(`画像の事前読み込みに失敗: ${floor.image_url}`, err);
+                  // 個別の画像読み込み失敗は全体の失敗とはしない
+                  return null;
+                });
+            });
+          
+          // すべての画像の読み込みを待つ
+          await Promise.allSettled(preloadPromises);
+        }
+        
+        setLoadingProgress(100); // 画像読み込み完了
         setError(null);
       } catch (error) {
         console.error('データの取得エラー:', error);
@@ -128,8 +157,11 @@ function ViewerContent() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">読み込み中...</p>
+          <LoadingIndicator 
+            progress={loadingProgress} 
+            message="データを読み込み中..."
+            isFullScreen={false}
+          />
         </div>
       </div>
     );
@@ -143,9 +175,9 @@ function ViewerContent() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <h2 className="text-xl font-semibold mb-2">エラー</h2>
-          {/* <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-4">
             {error || 'マップが見つかりません。'}
-          </p> */}
+          </p>
           <Link href="/" className="text-blue-500 hover:underline">
             トップページに戻る
           </Link>
@@ -163,6 +195,49 @@ function ViewerContent() {
         )}
         
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        {/* 表示エリア */}
+                                  {/* 右側の表示エリア */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+              <h2 className="text-lg font-semibold mb-4 text-gray-700">
+                {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
+              </h2>
+              
+
+ 
+                        <div 
+                ref={containerRef}
+                className="relative bg-gray-100 rounded-lg overflow-hidden flex flex-col justify-center items-center"
+              >
+                {is3DView ? (
+                  <View3D 
+                    floors={floors} 
+                    pins={pins}
+                    frontFloorIndex={frontFloorIndex}
+                    showArrows={showModalArrows}
+                    onNextFloor={showNextFloor}
+                    onPrevFloor={showPrevFloor}
+                  />
+                ) : (
+                  <NormalView
+                    floor={activeFloor}
+                    pins={pins.filter(pin => pin.floor_id === activeFloor?.id)}
+                  />
+                  
+                )}
+                  </div>
+                              <div className="mt-6">
+                  <PinList 
+                    pins={pins} 
+                    floors={floors}
+                    activeFloor={activeFloor?.id || null} 
+                    onPinClick={handlePinClick}
+                    is3DView={is3DView}
+                  />
+              
+                </div>
+            </div>
+              </div>
           {/* 左側のコントロールパネル */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
@@ -217,46 +292,11 @@ function ViewerContent() {
                 {is3DView ? '通常表示に戻す' : '3D表示にする'}
               </button>
               
-              {/* ピン一覧 */}
-              <div className="mt-4">
-                <PinList
-                  pins={pins}
-                  floors={floors}
-                  activeFloor={activeFloor?.id || null}
-                  onPinClick={handlePinClick}
-                  is3DView={is3DView}
-                />
-              </div>
+
             </div>
           </div>
           
-          {/* 右側の表示エリア */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">
-                {is3DView ? '3D表示' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
-              </h2>
-              
-              {/* 表示エリア */}
-              <div className="relative bg-gray-100 rounded-lg overflow-hidden flex justify-center items-center">
-                {is3DView ? (
-                  <View3D 
-                    floors={floors} 
-                    pins={pins}
-                    frontFloorIndex={frontFloorIndex}
-                    showArrows={showModalArrows}
-                    onNextFloor={showNextFloor}
-                    onPrevFloor={showPrevFloor}
-                  />
-                ) : (
-                  <NormalView
-                    floor={activeFloor}
-                    pins={pins.filter(pin => pin.floor_id === activeFloor?.id)}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
       
@@ -275,12 +315,14 @@ function ViewerContent() {
 // メインのコンポーネント
 export default function ViewerPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-        <p className="text-gray-600">読み込み中...</p>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">読み込み中...</p>
+        </div>
       </div>
-    </div>}>
+    }>
       <ViewerContent />
     </Suspense>
   );

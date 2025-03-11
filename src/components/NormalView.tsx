@@ -1,38 +1,97 @@
 // components/NormalView.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import PinMarker from '@/components/PinMarker';
 import ResponsiveImage from '@/components/ResponsiveImage';
 import { Pin, Floor } from '@/types/map-types';
+import { getExactImagePosition } from '@/utils/imageExactPositioning';
 
 interface NormalViewProps {
   floor: Floor | null;
   pins: Pin[];
-  onImageClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onImageClick?: (e: React.MouseEvent<HTMLDivElement>, exact: { x: number, y: number } | null) => void;
+  loadingProgress?: number;
 }
 
 const NormalView: React.FC<NormalViewProps> = ({
   floor,
   pins,
-  onImageClick
+  onImageClick,
+  loadingProgress = 0
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageWrapperRef = useRef<HTMLDivElement>(null);
   
   // フィルタリングされたピン (現在のフロアのみ)
   const filteredPins = floor ? pins.filter(pin => pin.floor_id === floor.id) : [];
 
+  // 画像が完全に読み込まれたかどうか
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  // 画像のクリックハンドラ
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onImageClick) return;
+    
+    // 画像上の正確な位置を計算
+    const exactPosition = getExactImagePosition(e, imageWrapperRef as React.RefObject<HTMLElement>);
+    
+    // クリックハンドラに正確な位置情報を渡す
+    onImageClick(e, exactPosition);
+  };
+
+  // 画像の読み込み完了時に実行される処理
+  useEffect(() => {
+    const handleImageLoaded = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && imageWrapperRef.current) {
+        // 現在のフロア画像が読み込まれた場合のみ処理
+        if (floor && floor.image_url === customEvent.detail.src) {
+          setImageLoaded(true);
+        }
+      }
+    };
+
+    window.addEventListener('imageLoaded', handleImageLoaded);
+    
+    return () => {
+      window.removeEventListener('imageLoaded', handleImageLoaded);
+    };
+  }, [floor]);
+
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-96 cursor-pointer border rounded-lg overflow-hidden"
-      onClick={onImageClick}
+      className="relative w-full h-96 border rounded-lg overflow-hidden bg-gray-50"
     >
       {floor ? (
         floor.image_url ? (
-          <ResponsiveImage
-            src={floor.image_url}
-            alt={`${floor.name}マップ`}
-            onClick={onImageClick}
-          />
+          <div 
+            ref={imageWrapperRef} 
+            className="w-full h-full flex items-center justify-center cursor-pointer" 
+            onClick={handleImageClick}
+            data-floor-id={floor.id}
+          >
+            <ResponsiveImage
+              src={floor.image_url}
+              alt={`${floor.name}マップ`}
+              onLoad={() => setImageLoaded(true)}
+            />
+            
+            {/* 現在選択されている階のピンを表示 - 画像が読み込まれた後に表示 */}
+            {imageLoaded && filteredPins.map((pin) => (
+              <PinMarker
+                key={pin.id}
+                pin={{
+                  id: pin.id,
+                  x: pin.x_position,
+                  y: pin.y_position,
+                  title: pin.title,
+                  description: pin.description
+                }}
+                onClick={() => window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }))}
+                containerRef={imageWrapperRef}
+              />
+            ))}
+          </div>
         ) : (
           <div className="flex items-center justify-center bg-gray-100 h-full">
             <div className="text-center text-gray-500">
@@ -50,22 +109,6 @@ const NormalView: React.FC<NormalViewProps> = ({
           </p>
         </div>
       )}
-      
-      {/* 現在選択されている階のピンを表示 */}
-      {filteredPins.map((pin) => (
-        <PinMarker
-          key={pin.id}
-          pin={{
-            id: pin.id,
-            x: pin.x_position,
-            y: pin.y_position,
-            title: pin.title,
-            description: pin.description
-          }}
-          onClick={() => window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }))}
-          containerRef ={containerRef}
-        />
-      ))}
     </div>
   );
 };

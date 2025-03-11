@@ -9,6 +9,8 @@ export type Pin = {
     y_position: number;
     created_at?: string;
     updated_at?: string;
+    _updating?: boolean;
+    _temp?: boolean;
   };
   
   export type Floor = {

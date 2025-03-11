@@ -23,20 +23,26 @@ const PinInfo: React.FC<PinInfoProps> = ({
   const floorName = floors.find(floor => floor.id === pin.floor_id)?.name || '不明なエリア';
 
   // 削除処理の調整
-  const handleDelete = () => {
-    if (window.confirm('このピンを削除してもよろしいですか？')) {
-      if (onDelete) {
-        onDelete();
-      }
-      // 操作後にモーダルを閉じる
-      if (onClose) {
-        onClose();
-      }
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // 削除ハンドラーが設定されている場合は呼び出す
+    if (onDelete) {
+      onDelete();
+    }
+    
+    // 操作後にモーダルを閉じる
+    if (onClose) {
+      onClose();
     }
   };
 
   // 編集処理の調整
-  const handleEdit = () => {
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (onEdit) {
       onEdit();
     }
@@ -60,7 +66,9 @@ const PinInfo: React.FC<PinInfoProps> = ({
           {onDelete && (
             <button
               onClick={handleDelete}
-              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
+              type="button"
+              data-pin-id={pin.id}
             >
               削除
             </button>
@@ -68,7 +76,8 @@ const PinInfo: React.FC<PinInfoProps> = ({
           {onEdit && (
             <button
               onClick={handleEdit}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+              type="button"
             >
               編集
             </button>

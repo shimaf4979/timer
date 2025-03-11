@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 
 interface PinProps {
   id: string;
-  x: number;
-  y: number;
+  x: number; // 画像上の相対位置 (0-100%)
+  y: number; // 画像上の相対位置 (0-100%)
   title?: string;
   description?: string;
   floor?: number;
@@ -21,6 +21,84 @@ const PinMarker: React.FC<PinMarkerProps> = ({ pin, onClick, containerRef }) => 
   const [tooltipPosition, setTooltipPosition] = useState({ left: '0', top: 'auto', bottom: '100%', right: 'auto' });
   const pinRef = useRef<HTMLButtonElement>(null);
   
+  // DOMでのピン位置を状態として管理
+  const [pinDOMPosition, setPinDOMPosition] = useState<{left: string, top: string}>({
+    left: '0px',
+    top: '0px'
+  });
+  
+  // ピン位置を計算して更新
+  useEffect(() => {
+    if (!containerRef?.current) return;
+    
+    // ピン位置の計算と更新を行う関数
+    const updatePinPosition = () => {
+      if (!containerRef.current) return;
+      
+      // 画像要素を取得
+      const imageElement = containerRef.current.querySelector('img');
+      if (!imageElement) return;
+      
+      // 画像の現在の表示サイズを取得
+      const imageRect = imageElement.getBoundingClientRect();
+      
+      // 画像がレンダリングされているかチェック
+      if (imageRect.width === 0 || imageRect.height === 0) {
+        // 画像がまだレンダリングされていない場合は遅延して再試行
+        requestAnimationFrame(updatePinPosition);
+        return;
+      }
+      
+      // ピン位置を直接設定 (position: absolute で left/top を使用)
+      setPinDOMPosition({
+        left: `${imageRect.left + (pin.x / 100) * imageRect.width}px`,
+        top: `${imageRect.top + (pin.y / 100) * imageRect.height}px`
+      });
+    };
+    
+    // 初回実行
+    updatePinPosition();
+    
+    // 画像のロードイベントとリサイズイベントを監視
+    const handleImageLoad = () => updatePinPosition();
+    const handleResize = () => {
+      // ブラウザリサイズ時は少し遅延させて位置を更新 (レイアウト完了を待つ)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(updatePinPosition);
+      });
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('imageLoaded', handleImageLoad);
+    window.addEventListener('imageFullyLoaded', handleImageLoad);
+    
+    // 画像コンテナのサイズ変更を監視
+    const resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(updatePinPosition);
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    // スクロールイベントも監視
+    const handleScroll = () => {
+      requestAnimationFrame(updatePinPosition);
+    };
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('imageLoaded', handleImageLoad);
+      window.removeEventListener('imageFullyLoaded', handleImageLoad);
+      window.removeEventListener('scroll', handleScroll);
+      
+      if (containerRef.current) {
+        resizeObserver.unobserve(containerRef.current);
+      }
+    };
+  }, [pin.x, pin.y, containerRef]);
+
   // 説明文の短縮表示用関数
   const truncateText = (text?: string, maxLength: number = 100) => {
     if (!text) return '';
@@ -31,34 +109,37 @@ const PinMarker: React.FC<PinMarkerProps> = ({ pin, onClick, containerRef }) => 
   useEffect(() => {
     if (showTooltip && pinRef.current) {
       const pinRect = pinRef.current.getBoundingClientRect();
-      const containerRect = containerRef?.current?.getBoundingClientRect() || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
       
-      // ツールチップの推定サイズ（実際のコンテンツによって異なる場合があります）
-      const tooltipWidth = Math.min(300, containerRect.width - 40);
-      const tooltipHeight = 120; // 推定値
+      // ビューポート基準のコンテナサイズを取得
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
       
-      // 水平位置を計算 - 画面からはみ出す場合は位置調整
+      // ツールチップのサイズ設定
+      const tooltipWidth = 256; // ツールチップの幅 (w-64 = 16rem = 256px)
+      const tooltipHeight = 120; // 推定高さ
+      
+      // 水平位置の計算 (左右の画面端に近い場合の調整)
       let left = '50%';
       let right = 'auto';
       let translateX = '-50%';
       
-      // 垂直位置を計算 - 上に表示するデフォルト
+      // 垂直位置の計算 (上下の画面端に近い場合の調整)
       let top = 'auto';
       let bottom = '100%';
       
       // 上部に十分なスペースがない場合は下に表示
-      if (pinRect.top - tooltipHeight < containerRect.top) {
+      if (pinRect.top - tooltipHeight < 0) {
         top = '100%';
         bottom = 'auto';
       }
       
-      // ピンが画面の右端に近い場合、吹き出しを左に寄せる
-      if (pinRect.left + (tooltipWidth / 2) > containerRect.width) {
+      // 右端に近い場合は左寄せ
+      if (pinRect.left + (tooltipWidth / 2) > viewportWidth) {
         left = 'auto';
         right = '0';
         translateX = '0';
-      } 
-      // ピンが画面の左端に近い場合、吹き出しを右に寄せる
+      }
+      // 左端に近い場合は右寄せ
       else if (pinRect.left - (tooltipWidth / 2) < 0) {
         left = '0';
         right = 'auto';
@@ -72,7 +153,7 @@ const PinMarker: React.FC<PinMarkerProps> = ({ pin, onClick, containerRef }) => 
         right
       });
     }
-  }, [showTooltip, containerRef]);
+  }, [showTooltip]);
 
   return (
     <button
@@ -83,13 +164,16 @@ const PinMarker: React.FC<PinMarkerProps> = ({ pin, onClick, containerRef }) => 
       }}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
-      className="absolute z-10"
+      onTouchStart={() => setShowTooltip(true)}
+      onTouchEnd={() => setShowTooltip(false)}
+      className="fixed z-10 transform -translate-x-1/2 -translate-y-1/2"
       style={{
-        // パーセンテージポジションではなくピクセル位置に変換するために transform を使用
-        left: `${pin.x}%`,
-        top: `${pin.y}%`,
-        transform: 'translate(-50%, -50%)'
+        left: pinDOMPosition.left,
+        top: pinDOMPosition.top
       }}
+      data-pin-id={pin.id}
+      data-pin-x={pin.x}
+      data-pin-y={pin.y}
     >
       <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg
                     hover:bg-red-600 transition-all duration-200 border-2 border-white
