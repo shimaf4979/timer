@@ -283,3 +283,56 @@ button {
   border-radius: 0.5rem !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
 }
+
+/* z-indexの階層構造を修正するCSS */
+
+/* モーダル関連 */
+.modal-root,
+[aria-modal="true"],
+[role="dialog"] {
+  z-index: 900 !important;
+}
+
+/* モーダル内容 */
+.modal-content,
+[role="document"],
+[aria-modal="true"] > div > div > div {
+  z-index: 910 !important;
+}
+
+/* ツールチップポータル */
+#tooltip-root {
+  z-index: 800 !important;
+}
+
+/* 特定の条件でのz-indexリセット */
+.modal-open .pin-marker,
+.modal-open button[data-pin-id] {
+  z-index: 5 !important;
+}
+
+/* QRコードモーダルが開いているときのピン */
+.qr-modal-open .pin-marker,
+.qr-modal-open button[data-pin-id] {
+  z-index: 5 !important; 
+}
+
+/* ボタンとピンのデフォルトz-index */
+button[data-pin-id] {
+  z-index: 50;
+}
+
+/* 3Dビューでのピン */
+.pin-3d {
+  z-index: 100;
+}
+
+/* ピンのツールチップ */
+.tooltip {
+  z-index: 800 !important;
+}
+
+/* フォーカスしているピン */
+.pin-focused {
+  z-index: 150;
+}

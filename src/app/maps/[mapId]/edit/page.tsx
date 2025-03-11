@@ -284,9 +284,30 @@ export default function MapEditPage() {
   }, [floors, fetchAllPins]);
 
   // アクティブなエリアを変更
-  const handleFloorChange = (floor: Floor) => {
-    setActiveFloor(floor);
+  // アクティブなエリアを変更する関数 (デバウンス適用)
+  const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout | null = null;
+    return function(...args: any[]) {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
   };
+const handleFloorChange = debounce((floor: Floor) => {
+  // 同じ階層を再選択した場合は何もしない
+  if (activeFloor?.id === floor.id) return;
+  
+  // 階層を変更
+  setActiveFloor(floor);
+  
+  // 3Dビューの場合、フロントインデックスも更新
+  if (is3DView) {
+    const index = floors.findIndex(f => f.id === floor.id);
+    if (index !== -1) {
+      setFrontFloorIndex(index);
+    }
+  }
+}, 10); // 300msのデバウンスを適用
+
 
   // エリアの追加
   const handleAddFloor = async (e: React.FormEvent) => {
@@ -895,7 +916,7 @@ export default function MapEditPage() {
                 )}
                 
                 {/* エリアリスト */}
-              {floors.length > 0 ? (
+              {/* {floors.length > 0 ? (
               <div className="space-y-2">
                 {floors.map((floor) => (
                   <div 
@@ -947,7 +968,63 @@ export default function MapEditPage() {
               <div className="text-center py-4 text-gray-500">
                 エリアがありません。「エリア追加」ボタンから追加してください。
               </div>
-            )}
+            )} */}
+            {floors.length > 0 ? (
+  <div className="space-y-2">
+    {floors.map((floor) => (
+      <div 
+        key={floor.id}
+        className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+          activeFloor?.id === floor.id 
+            ? 'bg-blue-100 border-l-4 border-blue-500' 
+            : 'bg-gray-50 hover:bg-gray-100'
+        }`}
+      >
+        <div 
+          className="flex items-center flex-grow cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFloorChange(floor);
+          }}
+        >
+          <div className="mr-3">
+            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+              {floor.floor_number}
+            </div>
+          </div>
+          <span>{floor.name}</span>
+        </div>
+        
+        <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
+          <ImageUploader
+            floorId={floor.id}
+            onUploadComplete={(imageUrl) => handleImageUpload(floor.id, imageUrl)}
+            onUploadError={(message) => setError(message)}
+            currentImageUrl={floor.image_url}
+            buttonText={floor.image_url ? (isMobile ? '変更' : '画像変更') : (isMobile ? '追加' : '画像追加')}
+            className="px-3  rounded text-sm"
+          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleDeleteFloor(floor.id, floor.name);
+            }}
+            className=" px-2 bg-red-400 text-white rounded text-sm hover:bg-red-200 cursor-pointer"
+            data-floor-id={floor.id}
+          >
+            {isMobile ? '削除' : '削除'}
+          </button>
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="text-center py-4 text-gray-500">
+    エリアがありません。「エリア追加」ボタンから追加してください。
+  </div>
+)}
                 </div>
               
               {is3DView ? (

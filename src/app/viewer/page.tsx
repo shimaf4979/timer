@@ -133,25 +133,7 @@ function ViewerContent() {
     }
   };
 
-  // ピンをクリックしたときの処理
-  const handlePinClick = (pin: Pin) => {
-    setSelectedPin(pin);
-    setIsModalOpen(true);
-    
-    // ピンがあるフロアをアクティブにする
-    const pinFloor = floors.find(floor => floor.id === pin.floor_id);
-    if (pinFloor && activeFloor?.id !== pinFloor.id) {
-      setActiveFloor(pinFloor);
-      
-      // 3Dビューの場合、フロントインデックスも更新
-      if (is3DView) {
-        const index = floors.findIndex(f => f.id === pinFloor.id);
-        if (index !== -1) {
-          setFrontFloorIndex(index);
-        }
-      }
-    }
-  };
+
 
   // 3D表示モードを切り替え
   const toggle3DView = () => {
@@ -165,37 +147,56 @@ function ViewerContent() {
       }
     }
   };
+  // ピンをクリックしたときの処理を変更
+const handlePinClick = (pin: Pin) => {
+  // モーダルは表示せず、フロアのみ切り替え
+  
+  // ピンがあるフロアをアクティブにする
+  const pinFloor = floors.find(floor => floor.id === pin.floor_id);
+  if (pinFloor && activeFloor?.id !== pinFloor.id) {
+    setActiveFloor(pinFloor);
+    
+    // 3Dビューの場合、フロントインデックスも更新
+    if (is3DView) {
+      const index = floors.findIndex(f => f.id === pinFloor.id);
+      if (index !== -1) {
+        setFrontFloorIndex(index);
+      }
+    }
+  }
+};
 
-  useEffect(() => {
-    // ビューからのピンクリックイベントを処理
-    const handleGlobalPinClick = (e: Event) => {
-      const customEvent = e as CustomEvent<Pin>;
-      if (customEvent.detail) {
-        setSelectedPin(customEvent.detail);
-        setIsModalOpen(true);
+// グローバルピンクリックイベントの処理も修正
+useEffect(() => {
+  // ビューからのピンクリックイベントを処理
+  const handleGlobalPinClick = (e: Event) => {
+    const customEvent = e as CustomEvent<Pin>;
+    if (customEvent.detail) {
+      // モーダルは表示せず、ピンのフロアに切り替えるだけ
+      
+      // ピンがあるフロアをアクティブにする
+      const pinFloor = floors.find(floor => floor.id === customEvent.detail.floor_id);
+      if (pinFloor && activeFloor?.id !== pinFloor.id) {
+        setActiveFloor(pinFloor);
         
-        // ピンがあるフロアをアクティブにする
-        const pinFloor = floors.find(floor => floor.id === customEvent.detail.floor_id);
-        if (pinFloor && activeFloor?.id !== pinFloor.id) {
-          setActiveFloor(pinFloor);
-          
-          // 3Dビューの場合、フロントインデックスも更新
-          if (is3DView) {
-            const index = floors.findIndex(f => f.id === pinFloor.id);
-            if (index !== -1) {
-              setFrontFloorIndex(index);
-            }
+        // 3Dビューの場合、フロントインデックスも更新
+        if (is3DView) {
+          const index = floors.findIndex(f => f.id === pinFloor.id);
+          if (index !== -1) {
+            setFrontFloorIndex(index);
           }
         }
       }
-    };
+    }
+  };
+
+  window.addEventListener('pinClick', handleGlobalPinClick);
   
-    window.addEventListener('pinClick', handleGlobalPinClick);
-    
-    return () => {
-      window.removeEventListener('pinClick', handleGlobalPinClick);
-    };
-  }, [floors, activeFloor, is3DView]);
+  return () => {
+    window.removeEventListener('pinClick', handleGlobalPinClick);
+  };
+}, [floors, activeFloor, is3DView]);
+
 
   if (loading) {
     return (
@@ -340,14 +341,14 @@ function ViewerContent() {
       </div>
       
       {/* ピン情報モーダル */}
-      <ImprovedModal
+      {/* <ImprovedModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedPin?.title || ''}
         size="md"
-      >
+      > */}
         {selectedPin && <PinInfo pin={selectedPin} floors={floors} />}
-      </ImprovedModal>
+      {/* </ImprovedModal> */}
     </main>
   );
 }

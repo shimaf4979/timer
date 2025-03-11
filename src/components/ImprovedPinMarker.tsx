@@ -1,4 +1,4 @@
-// components/ImprovedPinMarker.tsx
+// components/ImprovedPinMarker.tsx - Viewer用に修正
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -15,15 +15,18 @@ interface PinMarkerProps {
   onClick?: () => void;
   containerRef?: React.RefObject<HTMLDivElement | null>;
   is3DView?: boolean;
+  isViewer?: boolean; // Viewerページかどうかのフラグ
 }
 
 const ImprovedPinMarker: React.FC<PinMarkerProps> = ({ 
   pin, 
   onClick, 
   containerRef,
-  is3DView = false
+  is3DView = false,
+  isViewer = false // デフォルトはfalse
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [fixedTooltip, setFixedTooltip] = useState(false); // クリックで固定表示するための状態
   const pinRef = useRef<HTMLButtonElement>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   
@@ -57,7 +60,7 @@ const ImprovedPinMarker: React.FC<PinMarkerProps> = ({
       tooltipRoot.style.width = '100%';
       tooltipRoot.style.height = '100%';
       tooltipRoot.style.pointerEvents = 'none';
-      tooltipRoot.style.zIndex = '9999';
+      tooltipRoot.style.zIndex = '800'; // モーダル(900)より下のz-indexに変更
       document.body.appendChild(tooltipRoot);
     }
     
@@ -68,6 +71,25 @@ const ImprovedPinMarker: React.FC<PinMarkerProps> = ({
       // 他のピンも使用する可能性があるため
     };
   }, []);
+
+  // 画面全体をクリックしたときにfixedTooltipをリセットする
+  useEffect(() => {
+    if (!isViewer) return; // Viewerページでのみ有効にする
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (pinRef.current && !pinRef.current.contains(e.target as Node)) {
+        setFixedTooltip(false);
+      }
+    };
+
+    if (fixedTooltip) {
+      document.addEventListener('click', handleGlobalClick);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [fixedTooltip, isViewer]);
 
   // ピン位置を計算して更新
   useEffect(() => {
@@ -178,7 +200,7 @@ const ImprovedPinMarker: React.FC<PinMarkerProps> = ({
 
   // ツールチップ位置の更新
   useEffect(() => {
-    if (showTooltip && pinRef.current) {
+    if ((showTooltip || fixedTooltip) && pinRef.current) {
       const updateTooltipPosition = () => {
         if (!pinRef.current) return;
         
@@ -234,7 +256,7 @@ const ImprovedPinMarker: React.FC<PinMarkerProps> = ({
         window.removeEventListener('resize', updateTooltipPosition);
       };
     }
-  }, [showTooltip]);
+  }, [showTooltip, fixedTooltip]);
 
   // 説明文の短縮表示用関数
   const truncateText = (text?: string, maxLength: number = 100) => {
@@ -242,13 +264,23 @@ const ImprovedPinMarker: React.FC<PinMarkerProps> = ({
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
+  // ピンのクリックハンドラー
+  const handlePinClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (isViewer) {
+      // Viewerページの場合は吹き出しの表示/非表示を切り替える
+      setFixedTooltip(!fixedTooltip);
+    }
+    
+    // 通常のクリックコールバックも呼び出す
+    if (onClick) onClick();
+  };
+
   return (
     <button
       ref={pinRef}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (onClick) onClick();
-      }}
+      onClick={handlePinClick}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
       onTouchStart={() => setShowTooltip(true)}
@@ -274,14 +306,14 @@ const ImprovedPinMarker: React.FC<PinMarkerProps> = ({
       </div>
       
       {/* ポータル経由でツールチップを表示 */}
-      {showTooltip && portalContainer && createPortal(
+      {(showTooltip || fixedTooltip) && portalContainer && createPortal(
         <div 
-          className="fixed bg-white border border-gray-200 rounded-lg shadow-lg p-3 pointer-events-none animate-tooltip-appear"
+          className={`fixed bg-white border border-gray-200 rounded-lg shadow-lg p-3 pointer-events-none ${fixedTooltip ? 'animate-none' : 'animate-tooltip-appear'}`}
           style={{
             left: tooltipPosition.left,
             top: tooltipPosition.top,
             width: tooltipPosition.width,
-            zIndex: 9999,
+            zIndex: 800, // モーダル(900)より下に
             transformOrigin: tooltipPosition.transformOrigin
           }}
         >
@@ -290,7 +322,11 @@ const ImprovedPinMarker: React.FC<PinMarkerProps> = ({
             {pin.description && (
               <p className="text-xs text-gray-600">{truncateText(pin.description, 80)}</p>
             )}
-            <div className="mt-2 text-xs text-blue-500">クリックで詳細を表示</div>
+            <div className="mt-2 text-xs text-blue-500">
+              {isViewer 
+                ? (fixedTooltip ? 'タップで閉じる' : 'タップで詳細を表示') 
+                : 'クリックで詳細を表示'}
+            </div>
           </div>
         </div>,
         portalContainer
