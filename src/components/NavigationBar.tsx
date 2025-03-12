@@ -17,11 +17,12 @@ export default function NavigationBar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // ログイン・登録ページではナビゲーションバーを表示しない
-  if (pathname === '/login' || pathname === '/register') {
-    return null;
-  }
+  const [showNavbar, setShowNavbar] = useState(true);
+  
+  // useEffect内でパスをチェックする
+  useEffect(() => {
+    setShowNavbar(pathname !== '/login' && pathname !== '/register');
+  }, [pathname]);
 
   // モバイルメニューが開いているときにbodyのスクロールを無効化
   useEffect(() => {
@@ -34,6 +35,11 @@ export default function NavigationBar() {
       document.body.style.overflow = '';
     };
   }, [isMenuOpen]);
+
+  // ナビゲーションバーを表示しない条件
+  if (!showNavbar) {
+    return null;
+  }
 
   return (
     <nav className="bg-white shadow-md relative z-50">
@@ -96,14 +102,10 @@ export default function NavigationBar() {
                     </span>
                   </button>
                 </div>
-                <AnimatePresence>
+                {/* ドロップダウンでもAnimatePresenceをシンプルな実装に変更 */}
                   {isMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none"
+                    <div
+                      className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none dropdown-animation"
                     >
                       <Link
                         href="/account"
@@ -130,9 +132,8 @@ export default function NavigationBar() {
                       >
                         ログアウト
                       </button>
-                    </motion.div>
+                    </div>
                   )}
-                </AnimatePresence>
               </div>
             ) : (
               <div className="flex space-x-4">
@@ -193,26 +194,18 @@ export default function NavigationBar() {
       </div>
 
       {/* モバイルメニュー */}
-      <AnimatePresence>
+      {/* AnimatePresenceを使わない単純な実装に変更 */}
         {isMenuOpen && (
           <>
             {/* 半透明の背景オーバーレイ */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden"
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 sm:hidden mobile-menu-overlay"
               onClick={() => setIsMenuOpen(false)}
             />
             
             {/* メニューコンテンツ */}
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="sm:hidden bg-white relative z-50 overflow-hidden"
+            <div
+              className="sm:hidden bg-white relative z-50 overflow-hidden mobile-menu-content"
             >
               <div className="pt-2 pb-3 space-y-1">
                 {session && (
@@ -309,10 +302,9 @@ export default function NavigationBar() {
                   </div>
                 )}
               </div>
-            </motion.div>
+            </div>
           </>
         )}
-      </AnimatePresence>
     </nav>
   );
 }

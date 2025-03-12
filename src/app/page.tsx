@@ -116,7 +116,8 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-b from-sky-50 to-white">
       {/* ヒーローセクション */}
       <section className="relative overflow-hidden pt-20 pb-16 md:pt-32 md:pb-24">
-        <div className="absolute inset-0 -z-10 bg-[url('/placeholder.svg?height=200&width=200')] bg-center [mask-image:radial-gradient(white,transparent_85%)] opacity-10"></div>
+        {/* <div className="absolute inset-0 -z-10 bg-[url('/placeholder.svg?height=200&width=200')] bg-center [mask-image:radial-gradient(white,transparent_85%)] opacity-10"></div> */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sky-50/30 to-white/10 bg-center [mask-image:radial-gradient(white,transparent_85%)] opacity-20"></div>
 
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex flex-col items-center text-center space-y-4">
