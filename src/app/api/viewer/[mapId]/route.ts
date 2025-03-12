@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Pin } from '@/types/map-types';
 
+// app/api/viewer/[mapId]/route.ts
+
 // マップ情報の取得 (認証不要・公開)
 export async function GET(
   _request: NextRequest,
@@ -39,13 +41,13 @@ export async function GET(
       );
     }
 
-    // 全てのピン情報を取得
+    // 全てのピン情報を取得（編集者情報を含む）
     let pins: Pin[] = [];
     if (floors && floors.length > 0) {
       const floorIds = floors.map(floor => floor.id);
       const { data: pinsData, error: pinsError } = await supabaseAdmin
         .from('pins')
-        .select('id, floor_id, title, description, x_position, y_position')
+        .select('id, floor_id, title, description, x_position, y_position, editor_id, editor_nickname')
         .in('floor_id', floorIds);
 
       if (!pinsError) {

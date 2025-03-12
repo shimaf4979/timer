@@ -43,6 +43,8 @@ export type MapData = {
   created_at?: string;
   updated_at?: string;
   is_publicly_editable?: boolean; // 公開編集フラグを追加
+  editor_id?: string;        // 編集者ID
+  editor_nickname?: string;  // 編集者名
 };
 
 // 公開編集者情報を追加

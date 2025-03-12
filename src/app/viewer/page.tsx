@@ -10,7 +10,6 @@ import ImprovedView3D from '@/components/ImprovedView3D';
 import NormalView from '@/components/NormalView';
 import LoadingIndicator from '@/components/LoadingIndicator';
 import EnhancedPinViewer from '@/components/EnhancedPinViewer';
-import { getFromImageCache, preloadAndCacheImage } from '@/utils/imageCache';
 
 // useSearchParamsを使用する部分を別コンポーネントに分離
 function ViewerContent() {
@@ -27,6 +26,9 @@ function ViewerContent() {
   const [error, setError] = useState<string | null>(null);
   const [showModalArrows, setShowModalArrows] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // ピン選択状態の管理
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
   
   // コンテナへの参照
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,6 +71,7 @@ function ViewerContent() {
       return;
     }
     
+
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -85,11 +88,31 @@ function ViewerContent() {
         setLoadingProgress(50); // データ取得完了
         
         const data = await response.json();
+        console.log('API Response:', data);
         
         // データを設定
         setMapData(data.map);
         setFloors(data.floors);
-        setPins(data.pins);
+        
+        // ピンデータを処理（編集者情報を確認）
+        const processedPins = data.pins.map((pin: Pin) => {
+          // デバッグ用のログ
+          console.log(`Processing pin ${pin.id}, editor data:`, {
+            editor_id: pin.editor_id, 
+            editor_nickname: pin.editor_nickname
+          });
+          
+          // 編集者情報がないピンにはデフォルト値を設定
+          if (!pin.editor_nickname && !pin.editor_id) {
+            return {
+              ...pin,
+              editor_nickname: '不明な編集者'
+            };
+          }
+          return pin;
+        });
+        
+        setPins(processedPins);
         
         // 最初のエリアをアクティブに設定
         if (data.floors && data.floors.length > 0) {
@@ -97,24 +120,6 @@ function ViewerContent() {
         }
         
         setLoadingProgress(70); // データ処理完了
-        
-        // 画像の事前読み込み
-        if (data.floors && data.floors.length > 0) {
-          const preloadPromises = data.floors
-            .filter((floor: Floor) => floor.image_url) // 画像URLがあるフロアのみ
-            .map((floor: Floor) => {
-              return preloadAndCacheImage(floor.image_url || '')
-                .catch(err => {
-                  console.warn(`画像の事前読み込みに失敗: ${floor.image_url}`, err);
-                  // 個別の画像読み込み失敗は全体の失敗とはしない
-                  return null;
-                });
-            });
-          
-          // すべての画像の読み込みを待つ
-          await Promise.allSettled(preloadPromises);
-        }
-        
         setLoadingProgress(100); // 画像読み込み完了
         setError(null);
       } catch (error) {
@@ -154,35 +159,54 @@ function ViewerContent() {
     }
   };
 
-  // ピンをクリックしたときの処理（ピン一覧からのクリック）
+  // ピンをクリックしたときの処理（ピン本体またはピン一覧からのクリック）
   const handlePinClick = (pin: Pin) => {
-    // ピンがあるフロアをアクティブにする
-    const pinFloor = floors.find(floor => floor.id === pin.floor_id);
-    if (pinFloor) {
-      setActiveFloor(pinFloor);
+    // 既に選択中のピンをクリックした場合は選択を解除
+    if (selectedPinId === pin.id) {
+      setSelectedPinId(null);
+    } else {
+      // 新しいピンを選択
+      setSelectedPinId(pin.id);
       
-      // 3Dビューの場合、フロントインデックスも更新
-      if (is3DView) {
-        const index = floors.findIndex(f => f.id === pinFloor.id);
-        if (index !== -1) {
-          setFrontFloorIndex(index);
+      // ピンがあるフロアをアクティブにする
+      const pinFloor = floors.find(floor => floor.id === pin.floor_id);
+      if (pinFloor) {
+        setActiveFloor(pinFloor);
+        
+        // 3Dビューの場合、フロントインデックスも更新
+        if (is3DView) {
+          const index = floors.findIndex(f => f.id === pinFloor.id);
+          if (index !== -1) {
+            setFrontFloorIndex(index);
+          }
         }
+        
+        // 少し遅延してピンに視覚的にフォーカスを当てる
+        setTimeout(() => {
+          const pinElement = document.querySelector(`[data-pin-id="${pin.id}"]`);
+          if (pinElement) {
+            pinElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 300);
       }
-      
-      // 該当するピンを探して焦点を合わせる
-      setTimeout(() => {
-        // ピンのDOMを検索
-        const pinElement = document.querySelector(`[data-pin-id="${pin.id}"]`);
-        if (pinElement) {
-          // スクロール位置を調整して、ピンが見えるようにする
-          pinElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          
-          // ピンをハイライト表示（クリックイベントをシミュレート）
-          (pinElement as HTMLElement).click();
-        }
-      }, 300); // フロア切り替え後に少し遅延を入れる
     }
   };
+
+  // グローバルな pinClick イベントを処理
+  useEffect(() => {
+    const handleGlobalPinClick = (e: Event) => {
+      const customEvent = e as CustomEvent<Pin>;
+      if (customEvent.detail) {
+        handlePinClick(customEvent.detail);
+      }
+    };
+    
+    window.addEventListener('pinClick', handleGlobalPinClick);
+    
+    return () => {
+      window.removeEventListener('pinClick', handleGlobalPinClick);
+    };
+  }, [selectedPinId, floors, is3DView]); // 依存配列を更新
 
   if (loading) {
     return (
@@ -312,6 +336,8 @@ function ViewerContent() {
                         floors={floors}
                         containerRef={containerRef}
                         is3DView={true}
+                        isViewerMode={true}
+                        isSelected={selectedPinId === pin.id}
                       />
                     ))}
                   </div>
@@ -332,6 +358,8 @@ function ViewerContent() {
                           floors={floors}
                           containerRef={normalViewRef}
                           is3DView={false}
+                          isViewerMode={true}
+                          isSelected={selectedPinId === pin.id}
                         />
                       ))}
                   </div>
@@ -346,6 +374,7 @@ function ViewerContent() {
                   activeFloor={activeFloor?.id || null} 
                   onPinClick={handlePinClick}
                   is3DView={is3DView}
+                  selectedPinId={selectedPinId}
                 />
               </div>
             </div>
@@ -355,7 +384,6 @@ function ViewerContent() {
     </main>
   );
 }
-
 
 // メインのコンポーネント
 export default function ViewerPage() {

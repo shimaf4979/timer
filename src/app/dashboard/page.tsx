@@ -312,32 +312,32 @@ const handleInputChange = (
           <p className="text-green-600 font-medium">※ 公開編集モード有効</p>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 text-center">
         <Link
           href={`/maps/${map.map_id}/edit`}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex-1 text-center"
+          className="px- py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm flex-1 text-center"
         >
           編集
-        </Link>
-        <Link
-          href={`/viewer?id=${map.map_id}`}
-          target="_blank"
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm flex-1 text-center"
-        >
-          閲覧
         </Link>
         {map.is_publicly_editable && (
           <Link
             href={`/public-edit?id=${map.map_id}`}
             target="_blank"
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm flex-1 text-center"
+            className="px-2 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-xs sm:text-sm flex-1 text-center"
           >
             公開編集
           </Link>
         )}
+        <Link
+          href={`/viewer?id=${map.map_id}`}
+          target="_blank"
+          className="px-2 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm flex-1 text-center"
+        >
+          閲覧
+        </Link>
         <button
           onClick={() => openDeleteModal(map)}
-          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm cursor-pointer"
+          className="px-2 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs sm:text-sm  flex-1 text-center cursor-pointer"
           data-map-id={map.id}
         >
           削除

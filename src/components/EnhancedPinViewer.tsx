@@ -11,6 +11,12 @@ interface EnhancedPinViewerProps {
   containerRef?: React.RefObject<HTMLDivElement | null>;
   is3DView?: boolean;
   isEditable?: boolean; // 編集可能かどうか（デフォルトは編集不可）
+  isViewerMode?: boolean; // Viewerモードかどうか
+  isPublicEdit?: boolean; // 公開編集モードかどうか
+  currentEditorId?: string | null; // 現在の編集者ID（公開編集時）
+  isSelected?: boolean; // 選択されているかどうか
+  onEditPin?: (pin: Pin) => void; // ピン編集コールバック
+  onDeletePin?: (pin: Pin) => void; // ピン削除コールバック
 }
 
 const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({ 
@@ -18,10 +24,16 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
   floors, 
   containerRef,
   is3DView = false,
-  isEditable = false // デフォルトは編集可能
+  isEditable = false,
+  isViewerMode = false,
+  isPublicEdit = false,
+  currentEditorId = null,
+  isSelected = false,
+  onEditPin,
+  onDeletePin
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
-  const [fixedTooltip, setFixedTooltip] = useState(false);
+  const [fixedTooltip, setFixedTooltip] = useState(isSelected);
   const [showModal, setShowModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const pinRef = useRef<HTMLButtonElement>(null);
@@ -41,6 +53,11 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
     width: 200,
     transformOrigin: 'center bottom'
   });
+  
+  // 選択状態が変更されたときにfixedTooltipを更新
+  useEffect(() => {
+    setFixedTooltip(isSelected);
+  }, [isSelected]);
   
   // スマホ検出 - sm以下（640px未満）
   useEffect(() => {
@@ -264,8 +281,11 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
   const handlePinClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // モバイルでもデスクトップでも同じ挙動に統一：吹き出しの表示/非表示を切り替え
+    // ビューワーモードでは吹き出しの表示/非表示を切り替え
     setFixedTooltip(!fixedTooltip);
+    
+    // カスタムイベントを発火
+    window.dispatchEvent(new CustomEvent('pinClick', { detail: pin }));
   };
   
   // ツールチップ内の詳細ボタンのクリックハンドラー
@@ -275,6 +295,16 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
     setFixedTooltip(false);
   };
 
+  // 編集権限の確認
+  const canEdit = isEditable || (isPublicEdit && currentEditorId === pin.editor_id);
+
+  // ピンの色を決定
+  const getPinColor = () => {
+    if (fixedTooltip || isSelected) return 'bg-blue-500 hover:bg-blue-600'; // 選択中
+    if (isPublicEdit && currentEditorId === pin.editor_id) return 'bg-green-500 hover:bg-green-600'; // 自分のピン
+    return 'bg-red-500 hover:bg-red-600'; // デフォルト
+  };
+
   return (
     <>
       <button
@@ -282,12 +312,12 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
         onClick={handlePinClick}
         onMouseEnter={() => !isMobile && setShowTooltip(true)}
         onMouseLeave={() => !isMobile && setShowTooltip(false)}
-        className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${is3DView ? 'pin-3d' : 'pin-normal'} ${fixedTooltip ? 'selected-pin pin-hover-animation' : ''}`}
+        className={`absolute transform -translate-x-1/2 -translate-y-1/2 ${is3DView ? 'pin-3d' : 'pin-normal'} ${fixedTooltip || isSelected ? 'selected-pin pin-hover-animation' : ''}`}
         style={{
           left: `${pinPosition.left}px`,
           top: `${pinPosition.top}px`,
           display: pinPosition.display,
-          zIndex: fixedTooltip ? 100 : 50,
+          zIndex: fixedTooltip || isSelected ? 100 : 50,
           pointerEvents: 'auto'
         }}
         data-pin-id={pin.id}
@@ -297,7 +327,7 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
       >
         <div className="w-6 h-12 relative flex flex-col items-center group">
           {/* ピンのヘッド部分 */}
-          <div className={`w-6 h-6 ${fixedTooltip ? 'bg-blue-500 hover:bg-blue-600' : 'bg-red-500 hover:bg-red-600'} rounded-full flex items-center justify-center text-white 
+          <div className={`w-6 h-6 ${getPinColor()} rounded-full flex items-center justify-center text-white 
                         shadow-md transition-all duration-200 border-2 border-white
                         hover:scale-110 z-10 transform-gpu group-hover:-translate-y-1`}>
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -308,10 +338,22 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
           {/* ピンの棒部分 */}
           <div className="absolute flex flex-col items-center">
             {/* 上部 - 棒の上部 */}
-            <div className={`h-4 w-2 ${fixedTooltip ? 'bg-blue-600' : 'bg-red-600'} z-0 transform-gpu rounded-b-none mt-4`}></div>
+            <div className={`h-4 w-2 ${
+              fixedTooltip || isSelected 
+                ? 'bg-blue-600' 
+                : isPublicEdit && currentEditorId === pin.editor_id 
+                  ? 'bg-green-600' 
+                  : 'bg-red-600'
+            } z-0 transform-gpu rounded-b-none mt-4`}></div>
             
             {/* 下部 - 尖った部分 */}
-            <div className={`h-3 w-2 ${fixedTooltip ? 'bg-blue-700' : 'bg-red-700'} clip-path-triangle z-0 transform-gpu`}></div>
+            <div className={`h-3 w-2 ${
+              fixedTooltip || isSelected 
+                ? 'bg-blue-700' 
+                : isPublicEdit && currentEditorId === pin.editor_id 
+                  ? 'bg-green-700' 
+                  : 'bg-red-700'
+            } clip-path-triangle z-0 transform-gpu`}></div>
           </div>
           
           {/* ピンの影 */}
@@ -322,7 +364,7 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
       {/* ツールチップ（ポータル経由で表示） */}
       {(showTooltip || fixedTooltip) && portalContainer && createPortal(
         <div 
-          className={`fixed bg-white border border-gray-200 rounded-lg shadow-lg p-3 ${isMobile ? 'pointer-events-auto' : 'pointer-events-auto'} ${fixedTooltip ? 'animate-none' : 'animate-tooltip-appear'}`}
+          className={`fixed bg-white border border-gray-200 rounded-lg shadow-lg p-3 pointer-events-auto ${fixedTooltip ? 'animate-none' : 'animate-tooltip-appear'}`}
           style={{
             left: tooltipPosition.left,
             top: tooltipPosition.top,
@@ -333,31 +375,59 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
         >
           <div className="relative">
             <h3 className="font-bold text-gray-900 mb-1 text-sm">{pin.title}</h3>
+            
+            {/* 編集者情報 - 常に表示 */}
+            <div className="text-xs text-gray-500 mb-1 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              {pin.editor_nickname || "不明な編集者"}
+            </div>
+            
             {pin.description && (
               <p className="text-xs text-gray-600">{truncateText(pin.description, 80)}</p>
             )}
-            <div className="mt-2 text-right">
+            
+            <div className="mt-2 flex justify-end gap-1">
               <button 
                 onClick={handleViewDetailsClick}
                 className="text-xs text-white bg-blue-500 px-2 py-1 rounded hover:bg-blue-600 pointer-events-auto"
               >
                 詳細を見る
               </button>
-              {isEditable && (
-                <button
-                  onClick={() => {
-                    // 編集機能用のイベントをここに実装
-                    window.dispatchEvent(new CustomEvent('editPin', { detail: pin }));
-                    setFixedTooltip(false);
-                  }}
-                  className="text-xs text-white bg-green-500 px-2 py-1 rounded hover:bg-green-600 pointer-events-auto ml-2"
-                >
-                  編集
-                </button>
+              
+              {/* 編集・削除ボタン（条件付き表示） */}
+              {canEdit && (
+                <>
+                  {onEditPin && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onEditPin) onEditPin(pin);
+                        setFixedTooltip(false);
+                      }}
+                      className="text-xs text-white bg-green-500 px-2 py-1 rounded hover:bg-green-600 pointer-events-auto"
+                    >
+                      編集
+                    </button>
+                  )}
+                  
+                  {onDeletePin && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onDeletePin) onDeletePin(pin);
+                        setFixedTooltip(false);
+                      }}
+                      className="text-xs text-white bg-red-500 px-2 py-1 rounded hover:bg-red-600 pointer-events-auto"
+                    >
+                      削除
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
-
         </div>,
         portalContainer
       )}
@@ -371,16 +441,16 @@ const EnhancedPinViewer: React.FC<EnhancedPinViewerProps> = ({
       >
         <PinInfo 
           pin={pin} 
-          floors={floors} 
-          isEditable={isEditable}
+          floors={floors}
+          isEditable={canEdit}
           onEdit={() => {
             // 編集モードに切り替え
-            window.dispatchEvent(new CustomEvent('editPin', { detail: pin }));
+            if (onEditPin) onEditPin(pin);
             setShowModal(false);
           }}
           onDelete={() => {
             // 削除確認
-            window.dispatchEvent(new CustomEvent('deletePin', { detail: pin }));
+            if (onDeletePin) onDeletePin(pin);
             setShowModal(false);
           }}
           onClose={() => setShowModal(false)}
