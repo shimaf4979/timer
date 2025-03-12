@@ -817,6 +817,81 @@ const handleFloorChange = debounce((floor: Floor) => {
     };
   }, []);
 
+
+  // マップ情報の更新関数
+const updateMapInfo = async () => {
+  try {
+    setApiStatus({
+      loading: true,
+      message: 'マップ情報を更新中...',
+      error: null
+    });
+
+    const response = await fetch(`/api/maps/${mapId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(mapInfo),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'マップの更新に失敗しました');
+    }
+
+    const updatedMap = await response.json();
+    setMapData(updatedMap);
+    setEditingMapInfo(false);
+
+    setApiStatus({
+      loading: false,
+      message: '',
+      error: null
+    });
+  } catch (error) {
+    setApiStatus({
+      loading: false,
+      message: '',
+      error: error instanceof Error ? error.message : 'マップの更新に失敗しました'
+    });
+  }
+};
+
+
+// マップ情報編集機能を追加
+const [editingMapInfo, setEditingMapInfo] = useState(false);
+const [mapInfo, setMapInfo] = useState({
+  title: '',
+  description: '',
+  is_publicly_editable: false
+});
+
+// マップデータ取得後に編集用の状態を初期化
+useEffect(() => {
+  if (mapData) {
+    setMapInfo({
+      title: mapData.title,
+      description: mapData.description || '',
+      is_publicly_editable: mapData.is_publicly_editable || false
+    });
+  }
+}, [mapData]);
+
+// マップ情報編集フォームの入力ハンドラ
+const handleMapInfoChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+) => {
+  const { name, value, type } = e.target;
+  if (type === 'checkbox') {
+    const target = e.target as HTMLInputElement;
+    setMapInfo({ ...mapInfo, [name]: target.checked });
+  } else {
+    setMapInfo({ ...mapInfo, [name]: value });
+  }
+};
+
+
   const containerRef = useRef<HTMLDivElement>(null);
   if (loading && status !== 'loading') {
     return (
@@ -852,8 +927,9 @@ const handleFloorChange = debounce((floor: Floor) => {
           </h1>
           <div className="flex space-x-2">
             <QRCodeGenerator 
-              url={`/viewer?id=${mapId}`} 
-              title={`${mapData.title}_QR`}
+             url={`/viewer?id=${mapId}`} 
+             title={`${mapData.title}_QR`}
+             publicEditUrl={mapData.is_publicly_editable ? `/public-edit?id=${mapId}` : undefined}
             />
             <Link
               href="/dashboard"
@@ -885,6 +961,7 @@ const handleFloorChange = debounce((floor: Floor) => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
            {/* 右側の表示エリア */}
            <div className="lg:col-span-2">
+
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
             <h2 className="text-lg font-semibold text-gray-700 mb-2">
                   {is3DView ? '3D表示(ベータ版)' : `${activeFloor?.name || 'エリアを選択してください'} `}
@@ -1154,11 +1231,115 @@ const handleFloorChange = debounce((floor: Floor) => {
                 </div>
               )}
             </div>
+  
           </div>
 
           {/* 左側のコントロールパネル */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="text-lg font-semibold text-gray-700">マップ情報</h2>
+    {!editingMapInfo ? (
+      <button
+        onClick={() => setEditingMapInfo(true)}
+        className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 text-sm"
+      >
+        編集
+      </button>
+    ) : (
+      <div className="flex gap-2">
+        <button
+          onClick={() => setEditingMapInfo(false)}
+          className="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm"
+        >
+          キャンセル
+        </button>
+        <button
+          onClick={updateMapInfo}
+          className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 text-sm"
+        >
+          保存
+        </button>
+      </div>
+    )}
+  </div>
+
+  {!editingMapInfo ? (
+    <div>
+      <h3 className="text-xl font-semibold text-gray-800">{mapData?.title}</h3>
+      <p className="text-gray-600 mt-2">{mapData?.description || '説明なし'}</p>
+      <div className="mt-4 flex items-center gap-3">
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+          mapData?.is_publicly_editable 
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-gray-100 text-gray-800'
+        }`}>
+          {mapData?.is_publicly_editable 
+            ? '公開編集有効' 
+            : '公開編集無効'}
+        </span>
+        {mapData?.is_publicly_editable && (
+          <Link
+            href={`/public-edit?id=${mapId}`}
+            target="_blank"
+            className="text-sm text-purple-600 hover:text-purple-800 flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            公開編集ページを開く
+          </Link>
+        )}
+      </div>
+    </div>
+  ) : (
+    <form>
+      <div className="mb-4">
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+          タイトル
+        </label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          value={mapInfo.title}
+          onChange={handleMapInfoChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          required
+        />
+      </div>
+      <div className="mb-4">
+        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+          説明
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          value={mapInfo.description}
+          onChange={handleMapInfoChange}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div className="mb-4">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            name="is_publicly_editable"
+            checked={mapInfo.is_publicly_editable}
+            onChange={handleMapInfoChange}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <span className="ml-2 text-sm text-gray-700">公開編集を許可する（誰でもピンを追加・編集できます）</span>
+        </label>
+        <p className="text-xs text-gray-500 mt-1 ml-6">
+          チェックすると、ログインしていないユーザーでもニックネームを設定してピンの追加・編集ができるようになります。
+        </p>
+      </div>
+    </form>
+  )}
+</div>
               <h2 className="text-lg font-semibold mb-4 text-gray-700">コントロールパネル</h2>
               
              

@@ -1,4 +1,4 @@
-// components/QRCodeGenerator.tsx の修正部分
+// components/QRCodeGenerator.tsx の更新
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,19 +8,25 @@ import ImprovedModal from './ImprovedModal';
 interface QRCodeGeneratorProps {
   url: string;
   title?: string;
+  publicEditUrl?: string; // 公開編集用URL（オプション）
 }
 
-const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title }) => {
+const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title, publicEditUrl }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [fullUrl, setFullUrl] = useState('');
+  const [fullPublicEditUrl, setFullPublicEditUrl] = useState('');
+  const [activeTab, setActiveTab] = useState<'view' | 'edit'>('view');
 
   useEffect(() => {
     // 完全なURLを構築（クライアントサイドでのみ実行）
     if (typeof window !== 'undefined') {
       const origin = window.location.origin;
       setFullUrl(`${origin}${url}`);
+      if (publicEditUrl) {
+        setFullPublicEditUrl(`${origin}${publicEditUrl}`);
+      }
     }
-  }, [url]);
+  }, [url, publicEditUrl]);
 
   // モーダル開閉時にbodyにクラスを追加/削除
   useEffect(() => {
@@ -50,42 +56,108 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title }) => {
       <ImprovedModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
-        title="閲覧用QRコード"
+        title="QRコード"
         size="md"
       >
         <div className="flex flex-col items-center">
-          <div className="flex justify-center mb-4 bg-white p-4 rounded">
-            <QRCodeSVG
-              value={fullUrl}
-              size={200}
-              level="H"
-              includeMargin={true}
-            />
-          </div>
+          {/* タブ切り替え（公開編集URLがある場合のみ） */}
+          {publicEditUrl && (
+            <div className="flex w-full mb-4 border-b">
+              <button
+                onClick={() => setActiveTab('view')}
+                className={`flex-1 py-2 text-center border-b-2 ${
+                  activeTab === 'view' 
+                    ? 'border-blue-500 text-blue-600 font-medium' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                閲覧用
+              </button>
+              <button
+                onClick={() => setActiveTab('edit')}
+                className={`flex-1 py-2 text-center border-b-2 ${
+                  activeTab === 'edit' 
+                    ? 'border-purple-500 text-purple-600 font-medium' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                公開編集用
+              </button>
+            </div>
+          )}
           
-          <p className="text-sm text-gray-600 mb-4 text-center">
-            このQRコードを読み取ると、閲覧用ページにアクセスできます。
-          </p>
-          
-          <div className="flex space-x-4">
-            <button
-              onClick={() => {
-                window.open(fullUrl, '_blank');
-              }}
-              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-            >
-              閲覧者ページへ
-            </button>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(fullUrl);
-                alert('URLをクリップボードにコピーしました');
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              URLをコピー
-            </button>
-          </div>
+          {activeTab === 'view' ? (
+            <>
+              <div className="flex justify-center mb-4 bg-white p-4 rounded">
+                <QRCodeSVG
+                  value={fullUrl}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4 text-center">
+                このQRコードを読み取ると、閲覧用ページにアクセスできます。
+              </p>
+              
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    window.open(fullUrl, '_blank');
+                  }}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                >
+                  閲覧者ページへ
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(fullUrl);
+                    alert('URLをクリップボードにコピーしました');
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  URLをコピー
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-center mb-4 bg-white p-4 rounded">
+                <QRCodeSVG
+                  value={fullPublicEditUrl}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4 text-center">
+                このQRコードを読み取ると、公開編集ページにアクセスできます。
+                誰でもニックネームを設定してピンの追加・編集ができます。
+              </p>
+              
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    window.open(fullPublicEditUrl, '_blank');
+                  }}
+                  className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600"
+                >
+                  公開編集ページへ
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(fullPublicEditUrl);
+                    alert('URLをクリップボードにコピーしました');
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  URLをコピー
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </ImprovedModal>
     </>

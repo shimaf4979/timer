@@ -14,7 +14,7 @@ export async function GET(
     // マップ情報を取得
     const { data: map, error: mapError } = await supabaseAdmin
       .from('maps')
-      .select('id, map_id, title, description')
+      .select('id, map_id, title, description, is_publicly_editable')
       .eq('map_id', mapId)
       .single();
 

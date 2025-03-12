@@ -36,70 +36,70 @@ export async function GET(
 }
 
 // マップを更新
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ mapId: string }> }
-) {
-  const session = await auth();
-  const { mapId } = await context.params;
+// export async function PATCH(
+//   request: NextRequest,
+//   context: { params: Promise<{ mapId: string }> }
+// ) {
+//   const session = await auth();
+//   const { mapId } = await context.params;
   
-  if (!session?.user) {
-    return NextResponse.json(
-      { error: '認証が必要です' },
-      { status: 401 }
-    );
-  }
+//   if (!session?.user) {
+//     return NextResponse.json(
+//       { error: '認証が必要です' },
+//       { status: 401 }
+//     );
+//   }
 
-  try {
-    // マップが存在し、ユーザーが所有しているか確認
-    const { data: existingMap, error: getError } = await supabaseAdmin
-      .from('maps')
-      .select('id, user_id')
-      .eq('map_id', mapId)
-      .single();
+//   try {
+//     // マップが存在し、ユーザーが所有しているか確認
+//     const { data: existingMap, error: getError } = await supabaseAdmin
+//       .from('maps')
+//       .select('id, user_id')
+//       .eq('map_id', mapId)
+//       .single();
 
-    if (getError || !existingMap) {
-      return NextResponse.json(
-        { error: 'マップが見つかりません' },
-        { status: 404 }
-      );
-    }
+//     if (getError || !existingMap) {
+//       return NextResponse.json(
+//         { error: 'マップが見つかりません' },
+//         { status: 404 }
+//       );
+//     }
 
-    // マップの所有者確認
-    if (existingMap.user_id !== session.user.id) {
-      return NextResponse.json(
-        { error: 'このマップを編集する権限がありません' },
-        { status: 403 }
-      );
-    }
+//     // マップの所有者確認
+//     if (existingMap.user_id !== session.user.id) {
+//       return NextResponse.json(
+//         { error: 'このマップを編集する権限がありません' },
+//         { status: 403 }
+//       );
+//     }
 
-    const { title, description } = await request.json();
+//     const { title, description } = await request.json();
 
-    // マップの更新
-    const { data: map, error } = await supabaseAdmin
-      .from('maps')
-      .update({
-        title,
-        description,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existingMap.id)
-      .select()
-      .single();
+//     // マップの更新
+//     const { data: map, error } = await supabaseAdmin
+//       .from('maps')
+//       .update({
+//         title,
+//         description,
+//         updated_at: new Date().toISOString(),
+//       })
+//       .eq('id', existingMap.id)
+//       .select()
+//       .single();
 
-    if (error) {
-      throw error;
-    }
+//     if (error) {
+//       throw error;
+//     }
 
-    return NextResponse.json(map);
-  } catch (error) {
-    console.error('マップ更新エラー:', error);
-    return NextResponse.json(
-      { error: 'マップの更新に失敗しました' },
-      { status: 500 }
-    );
-  }
-}
+//     return NextResponse.json(map);
+//   } catch (error) {
+//     console.error('マップ更新エラー:', error);
+//     return NextResponse.json(
+//       { error: 'マップの更新に失敗しました' },
+//       { status: 500 }
+//     );
+//   }
+// }
 
 // マップを削除
 export async function DELETE(
@@ -157,6 +157,72 @@ export async function DELETE(
     console.error('マップ削除エラー:', error);
     return NextResponse.json(
       { error: 'マップの削除に失敗しました' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ mapId: string }> }
+) {
+  const session = await auth();
+  const { mapId } = await context.params;
+  
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: '認証が必要です' },
+      { status: 401 }
+    );
+  }
+
+  try {
+    // マップが存在し、ユーザーが所有しているか確認
+    const { data: existingMap, error: getError } = await supabaseAdmin
+      .from('maps')
+      .select('id, user_id')
+      .eq('map_id', mapId)
+      .single();
+
+    if (getError || !existingMap) {
+      return NextResponse.json(
+        { error: 'マップが見つかりません' },
+        { status: 404 }
+      );
+    }
+
+    // マップの所有者確認
+    if (existingMap.user_id !== session.user.id) {
+      return NextResponse.json(
+        { error: 'このマップを編集する権限がありません' },
+        { status: 403 }
+      );
+    }
+
+    const { title, description, is_publicly_editable } = await request.json();
+
+    // マップの更新
+    const { data: map, error } = await supabaseAdmin
+      .from('maps')
+      .update({
+        title,
+        description,
+        is_publicly_editable: is_publicly_editable !== undefined ? is_publicly_editable : false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingMap.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json(map);
+  } catch (error) {
+    console.error('マップ更新エラー:', error);
+    return NextResponse.json(
+      { error: 'マップの更新に失敗しました' },
       { status: 500 }
     );
   }

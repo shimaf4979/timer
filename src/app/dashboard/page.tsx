@@ -15,7 +15,9 @@ type Map = {
   description: string;
   created_at: string;
   updated_at: string;
+  is_publicly_editable: boolean;
 };
+
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -24,17 +26,26 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newMap, setNewMap] = useState({
-    map_id: '',
-    title: '',
-    description: '',
-  });
+  // const [newMap, setNewMap] = useState({
+  //   map_id: '',
+  //   title: '',
+  //   description: '',
+  // });
   
   // 削除確認モーダル用の状態
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [mapToDelete, setMapToDelete] = useState<Map | null>(null);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
 
+
+    // マップ作成フォームを更新
+    const [newMap, setNewMap] = useState({
+      map_id: '',
+      title: '',
+      description: '',
+      is_publicly_editable: false, // 公開編集フラグを追加
+    });
+    
   useEffect(() => {
     if (status === 'loading') return;
 
@@ -68,10 +79,10 @@ export default function Dashboard() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewMap({ ...newMap, [name]: value });
-  };
+  // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  //   const { name, value } = e.target;
+  //   setNewMap({ ...newMap, [name]: value });
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +101,12 @@ export default function Dashboard() {
       }
 
       // 成功したら入力フォームをリセットしてマップ一覧を更新
-      setNewMap({ map_id: '', title: '', description: '' });
+      setNewMap({ 
+        map_id: '', 
+        title: '', 
+        description: '', 
+        is_publicly_editable: false 
+      });
       setShowCreateForm(false);
       fetchMaps();
     } catch (error) {
@@ -143,6 +159,21 @@ export default function Dashboard() {
       }
     );
   };
+
+
+
+// ハンドラーを変更
+const handleInputChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+) => {
+  const { name, value, type } = e.target;
+  if (type === 'checkbox') {
+    const target = e.target as HTMLInputElement;
+    setNewMap({ ...newMap, [name]: target.checked });
+  } else {
+    setNewMap({ ...newMap, [name]: value });
+  }
+};
 
   if (loading && status !== 'loading') {
     return (
@@ -209,6 +240,22 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="mb-4">
+              <label htmlFor="is_publicly_editable" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+                <input
+                  type="checkbox"
+                  id="is_publicly_editable"
+                  name="is_publicly_editable"
+                  checked={newMap.is_publicly_editable}
+                  onChange={handleInputChange}
+                  className="mr-2 h-4 w-4 text-blue-600"
+                />
+                公開編集を許可する（誰でもピンを追加・編集できます）
+              </label>
+              <p className="text-xs text-gray-500 mt-1 ml-6">
+                チェックすると、ログインしていないユーザーでもニックネームを設定してピンの追加・編集ができるようになります。
+              </p>
+            </div>
+            <div className="mb-4">
               <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                 タイトル
               </label>
@@ -252,41 +299,53 @@ export default function Dashboard() {
       {/* マップ一覧 */}
       {maps.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {maps.map((map) => (
-            <div key={map.id} className="bg-white shadow-md rounded-lg overflow-hidden">
-              <div className="p-6">
-                <h2 className="text-xl font-semibold mb-2">{map.title}</h2>
-                <p className="text-gray-600 mb-4 text-sm">{map.description || '説明なし'}</p>
-                <div className="text-gray-500 text-xs mb-4">
-                  <p>ID: {map.map_id}</p>
-                  <p>作成日: {new Date(map.created_at).toLocaleDateString()}</p>
-                  <p>更新日: {new Date(map.updated_at).toLocaleDateString()}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <Link
-                    href={`/maps/${map.map_id}/edit`}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex-1 text-center"
-                  >
-                    編集
-                  </Link>
-                  <Link
-                    href={`/viewer?id=${map.map_id}`}
-                    target="_blank"
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm flex-1 text-center"
-                  >
-                    閲覧
-                  </Link>
-                  <button
-                    onClick={() => openDeleteModal(map)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm cursor-pointer"
-                    data-map-id={map.id}
-                  >
-                    削除
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+{maps.map((map) => (
+  <div key={map.id} className="bg-white shadow-md rounded-lg overflow-hidden">
+    <div className="p-6">
+      <h2 className="text-xl font-semibold mb-2">{map.title}</h2>
+      <p className="text-gray-600 mb-4 text-sm">{map.description || '説明なし'}</p>
+      <div className="text-gray-500 text-xs mb-4">
+        <p>ID: {map.map_id}</p>
+        <p>作成日: {new Date(map.created_at).toLocaleDateString()}</p>
+        <p>更新日: {new Date(map.updated_at).toLocaleDateString()}</p>
+        {map.is_publicly_editable && (
+          <p className="text-green-600 font-medium">※ 公開編集モード有効</p>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href={`/maps/${map.map_id}/edit`}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex-1 text-center"
+        >
+          編集
+        </Link>
+        <Link
+          href={`/viewer?id=${map.map_id}`}
+          target="_blank"
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm flex-1 text-center"
+        >
+          閲覧
+        </Link>
+        {map.is_publicly_editable && (
+          <Link
+            href={`/public-edit?id=${map.map_id}`}
+            target="_blank"
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm flex-1 text-center"
+          >
+            公開編集
+          </Link>
+        )}
+        <button
+          onClick={() => openDeleteModal(map)}
+          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm cursor-pointer"
+          data-map-id={map.id}
+        >
+          削除
+        </button>
+      </div>
+    </div>
+  </div>
+))}
         </div>
       ) : (
         <div className="bg-white shadow-md rounded-lg p-6 text-center">
