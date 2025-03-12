@@ -921,11 +921,11 @@ const handleMapInfoChange = (
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gray-50">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+        <div className="flex justify-between items-center mb-1">
+          {/* <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
             {mapData.title}
-          </h1>
-          <div className="flex space-x-2">
+          </h1> */}
+          {/* <div className="flex justify-end space-x-2">
             <QRCodeGenerator 
              url={`/viewer?id=${mapId}`} 
              title={`${mapData.title}_QR`}
@@ -935,9 +935,9 @@ const handleMapInfoChange = (
               href="/dashboard"
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
             >
-              {isMobile ? '戻る' : 'ダッシュボードに戻る'}
+              {isMobile ? 'マップ一覧に戻る' : 'ダッシュボードに戻る'}
             </Link>
-          </div>
+          </div> */}
         </div>
         
         {apiStatus.error && (
@@ -987,6 +987,11 @@ const handleMapInfoChange = (
                       ? (isMobile ? '終了' : 'ピン追加終了') 
                       : (isMobile ? 'ピン追加' : 'ピンを追加')}
                   </button>
+                  <QRCodeGenerator 
+             url={`/viewer?id=${mapId}`} 
+             title={`${mapData.title}_QR`}
+             publicEditUrl={mapData.is_publicly_editable ? `/public-edit?id=${mapId}` : undefined}
+            />
                 
               </div>
                   {/* エリア選択 */}
