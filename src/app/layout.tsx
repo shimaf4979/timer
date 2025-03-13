@@ -22,9 +22,6 @@ export const metadata: Metadata = {
   title: "Pamfree",
   description:
     "地図やフロアプランをインタラクティブに変える電子パンフレット。",
-    icons: {
-      icon: "/logo.svg",
-    },
   openGraph: {
     title: "Pamfree",
     description:
@@ -34,8 +31,6 @@ export const metadata: Metadata = {
     images: [
       {
         url: "https://pamfree.com/pamfree.png", // 絶対URLに変更
-        width: 80,
-        height: 80,
       },
     ],
   },

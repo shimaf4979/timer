@@ -49,7 +49,7 @@ export default function NavigationBar() {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className={`${delaGothicOne.className} text-3xl font-bold text-blue-600`}>
-                <Image src="/logo.svg" alt="Pamfree" width={150} height={150} />
+                <Image src="/pamfree.png" alt="Pamfree" width={150} height={150} />
               </Link>
             </div>
             {session && (
