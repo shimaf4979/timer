@@ -73,6 +73,9 @@ export const metadata: Metadata = {
     default: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
   },
   description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
+  icons: {
+    icon: '/logo.svg',
+  },
   openGraph: {
     type: 'website',
     locale: 'ja_JP',
