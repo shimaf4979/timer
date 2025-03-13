@@ -18,7 +18,6 @@ const geistMono = Geist_Mono({
 
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://pamfree.com'),
   title: {
     template: '%s | Pamfree',
     default: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
