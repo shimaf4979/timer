@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     siteName: 'Pamfree',
     images: [
       {
-        url: '/pamfree.png', // 相対パスに変更
+        url: 'https://pamfree.com/pamfree.png', // 相対パスに変更
         width: 1200,
         height: 630,
         alt: 'PamfreeのOGP画像',
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
     description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
-    images: ['/pamfree.png'], // 相対パスに変更
+    images: ['https://pamfree.com/pamfree.png'], // 相対パスに変更
   },
 };
 
