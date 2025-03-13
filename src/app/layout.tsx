@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'ja_JP',
-    url: 'https://www.pamfree.com/',
+    url: 'https://timer-git-main-yudaishimamuras-projects.vercel.app',
     title: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
     description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
     siteName: 'Pamfree',
