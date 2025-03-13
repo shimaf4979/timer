@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>屋内における方向推定を可能にする3Dパンフレット</title>
+<style>
+  @page {
+    size: A4;
+    margin: 15mm 10mm; /* 余白を減らす */
+  }
+  
+  body {
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background-color: white;
+  }
+  
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 15mm 10mm; /* 余白を減らす */
+    box-sizing: border-box;
+    page-break-after: always;
+    position: relative;
+  }
+  
+  h1 {
+    font-size: 24pt;
+    color: #0284c7;
+    text-align: center;
+    margin-top: 40px; /* 余白を増やす */
+    margin-bottom: 30px; /* 余白を増やす */
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 15px;
+  }
+  
+  h2 {
+    font-size: 18pt;
+    color: #0284c7;
+    margin-top: 35px; /* 余白を増やす */
+    margin-bottom: 25px; /* 余白を増やす */
+    border-left: 5px solid #0284c7;
+    padding-left: 10px;
+  }
+  
+  h3 {
+    font-size: 14pt;
+    color: #0369a1;
+    margin-top: 30px; /* 余白を増やす */
+    margin-bottom: 20px; /* 余白を増やす */
+  }
+  
+  p {
+    font-size: 11pt;
+    margin-bottom: 10px;
+    text-align: justify;
+  }
+  
+  ul, ol {
+    font-size: 11pt;
+    margin-bottom: 15px;
+    padding-left: 25px;
+  }
+  
+  li {
+    margin-bottom: 5px;
+  }
+  
+  .highlight-box {
+    background-color: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px; /* 角を丸くする */
+    padding: 15px;
+    margin: 15px 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .emphasis {
+    background-color: #dbeafe;
+    border-left: 4px solid #3b82f6;
+    padding: 10px 15px;
+    margin: 15px 0;
+    font-weight: bold;
+    border-radius: 0 8px 8px 0; /* 右側の角を丸くする */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .super-emphasis {
+    background-color: #eff6ff;
+    border: 2px solid #2563eb;
+    border-radius: 10px; /* 角をより丸くする */
+    padding: 20px 15px;
+    margin: 25px 0;
+    font-size: 13pt;
+    text-align: center;
+    color: #1e40af;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* 影を強調 */
+  }
+  
+  .image-container {
+    text-align: center;
+    margin: 25px 0;
+  }
+  
+  .image-container img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px; /* 角を丸くする */
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* 影を追加 */
+    transition: transform 0.3s ease; /* ホバー効果のためのトランジション */
+  }
+  
+  .image-container img:hover {
+    transform: scale(1.01); /* ホバー時に少し拡大 */
+  }
+  
+  .caption {
+    font-size: 10pt;
+    color: #64748b;
+    text-align: center;
+    margin-top: 10px;
+    font-style: italic; /* イタリック体にする */
+  }
+  
+  .comparison {
+    display: flex;
+    justify-content: space-between;
+    margin: 25px 0;
+  }
+  
+  .comparison-item {
+    width: 48%;
+    background-color: #f8fafc;
+    border-radius: 8px; /* 角を丸くする */
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .comparison-title {
+    font-size: 12pt;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 15px;
+    color: #0284c7;
+    background-color: #f0f9ff;
+    padding: 8px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .transition-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 30px 0;
+    background-color: #f8fafc;
+    border-radius: 10px; /* 角を丸くする */
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .transition-step {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  
+  .transition-arrow {
+    font-size: 24pt;
+    color: #0284c7;
+    margin: 0 15px;
+    text-align: center;
+    background-color: #e0f2fe;
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 50%; /* 円形にする */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 影を追加 */
+  }
+  
+  .transition-image {
+    width: 45%;
+    border: 1px solid #e2e8f0;
+    padding: 10px;
+    background-color: white;
+    border-radius: 8px; /* 角を丸くする */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 影を追加 */
+  }
+  
+  .transition-description {
+    width: 45%;
+    padding: 15px;
+    background-color: white;
+    border-radius: 8px; /* 角を丸くする */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 影を追加 */
+  }
+  
+  .footer {
+    position: absolute;
+    bottom: 10mm;
+    left: 10mm;
+    right: 10mm;
+    font-size: 9pt;
+    text-align: center;
+    color: #64748b;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 5px;
+  }
+  
+  .page-number {
+    position: absolute;
+    bottom: 10mm;
+    right: 10mm;
+    font-size: 9pt;
+    color: #64748b;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 25px 0;
+    border-radius: 8px; /* 角を丸くする */
+    overflow: hidden; /* 角丸を適用するために必要 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 影を追加 */
+  }
+  
+  table, th, td {
+    border: 1px solid #e2e8f0;
+  }
+  
+  th {
+    background-color: #f0f9ff;
+    padding: 12px;
+    font-size: 11pt;
+    text-align: left;
+  }
+  
+  td {
+    padding: 12px;
+    font-size: 11pt;
+    background-color: white;
+  }
+  
+  tr:nth-child(even) td {
+    background-color: #f8fafc; /* 偶数行の背景色を変える */
+  }
+  
+  .timeline {
+    margin: 25px 0;
+    background-color: #f8fafc;
+    border-radius: 10px; /* 角を丸くする */
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .timeline-item {
+    display: flex;
+    margin-bottom: 20px;
+    background-color: white;
+    border-radius: 8px; /* 角を丸くする */
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .timeline-date {
+    width: 100px;
+    font-weight: bold;
+    color: #0284c7;
+    background-color: #e0f2fe;
+    padding: 5px 10px;
+    border-radius: 5px;
+    text-align: center;
+    margin-right: 15px;
+  }
+  
+  .timeline-content {
+    flex: 1;
+  }
+  
+  .key-feature {
+    background-color: #f0f9ff;
+    border-left: 4px solid #0284c7;
+    padding: 12px 15px;
+    margin: 12px 0;
+    border-radius: 0 8px 8px 0; /* 右側の角を丸くする */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* 影を追加 */
+  }
+  
+  .key-feature-title {
+    font-weight: bold;
+    color: #0284c7;
+    margin-bottom: 8px;
+    font-size: 12pt;
+  }
+  
+  @media print {
+    body {
+      width: 210mm;
+      height: 297mm;
+    }
+    .page {
+      margin: 0;
+      border: initial;
+      border-radius: initial;
+      width: initial;
+      min-height: initial;
+      box-shadow: initial;
+      background: initial;
+      page-break-after: always;
+    }
+  }
+</style>
+</head>
+<body>
+<!-- 表紙 -->
+<div class="page">
+  <h1 style="font-size: 28pt; margin-top: 60px; border: none;">屋内における方向推定を可能にする<br>3Dパンフレット</h1>
+  
+  <div class="image-container" style="margin-top: 40px;">
+    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-12%2017.20.29-fZYA5uH9pqZDJ5g1V1NltSsci4pyG8.png" alt="3Dパンフレットのコンセプト図" style="max-width: 85%;">
+  </div>
+  
+  <p style="text-align: center; font-size: 14pt; margin-top: 40px;">企画提案書</p>
+  
+  <p style="text-align: right; margin-top: 60px; font-size: 12pt;">
+    提出日：2025年3月12日<br>
+    チーム：インタラクティブマップ開発チーム
+  </p>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+</div>
+
+<!-- 制作背景 -->
+<div class="page">
+  <h1>1. 制作背景</h1>
+  
+  <div class="super-emphasis">
+    屋内施設では、ユーザーが自分の位置や向いている方向を直感的に把握することが難しく、<br>
+    効率的なナビゲーションが実現できていません
+  </div>
+  
+  <h2>1.1 屋内での方向認識の課題</h2>
+  <p>
+    多くの施設では案内図が設置されているものの、ユーザーは自分の現在地や向いている方向を直感的に把握するのが難しい状況です。
+    特に、複数のフロアが存在する建物や、広大なイベント会場では、平面のマップだけでは十分なナビゲーションができず、
+    迷いやすいという課題があります。
+  </p>
+  
+  <div class="highlight-box">
+    <h3 style="margin-top: 0;">具体的な課題例：</h3>
+    <ul>
+      <li><strong>ショッピングモール</strong>：エレベーターやエスカレーターの位置が分からず、目的の店舗へ行くのに時間がかかる</li>
+      <li><strong>イベント会場</strong>：広大な展示会場で、自分がどのブースにいるのか、次にどこへ向かえばよいのか分からない</li>
+      <li><strong>病院や大学キャンパス</strong>：似たような構造の建物が多く、目的地までの正しいルートを把握するのが困難</li>
+    </ul>
+  </div>
+  
+  <div class="transition-diagram">
+    <div class="transition-step">
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.33.55-BXPvpWfpEqxr2MvJIYbcOIrOlIs2dP.png" alt="従来の案内図" style="width: 100%;">
+        <div class="caption">従来の案内図</div>
+      </div>
+      <div class="transition-arrow">→</div>
+      <div class="transition-description">
+        <p><strong>現状の問題点：</strong></p>
+        <ul>
+          <li>自分の向いている方向が分からない</li>
+          <li>現在地の把握が難しい</li>
+          <li>目的地までの最適ルートが不明確</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <h2>1.2 屋内ナビゲーション技術の進展</h2>
+  <p>
+    屋外ではGPSを活用したナビゲーションが一般的になっていますが、GPSは建物内では精度が低下するため、
+    従来の方法では屋内での方向推定が困難でした。しかし、最近では以下の技術により、
+    屋内でも高精度なナビゲーションが可能になりつつあります。
+  </p>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">2</div>
+</div>
+
+<!-- 制作背景（続き） -->
+<div class="page">
+  <table>
+    <tr>
+      <th style="width: 25%;">技術</th>
+      <th>概要</th>
+      <th style="width: 30%;">メリット</th>
+    </tr>
+    <tr>
+      <td><strong>方位センサー</strong></td>
+      <td>スマートフォンのジャイロ・加速度センサーで向いている方向を特定</td>
+      <td>追加のハードウェアが不要で、多くのユーザーが利用可能</td>
+    </tr>
+    <tr>
+      <td>Bluetoothビーコン</td>
+      <td>施設内に設置されたビーコンからの信号を受信し、位置を特定</td>
+      <td>高精度な位置測定が可能、GPSの届かない場所でも利用可能</td>
+    </tr>
+    <tr>
+      <td><strong>AR技術</strong></td>
+      <td>カメラ映像とマップを重ね合わせ、直感的な道案内を提供</td>
+      <td>視覚的に分かりやすく、ユーザーの理解を助ける</td>
+    </tr>
+  </table>
+  
+  <h2>1.3 3Dパンフレットによる新しい案内方式の提案</h2>
+  <p>
+    従来の紙のパンフレットは情報提供には優れているものの、リアルタイムでの案内や方向認識には不向きでした。
+    しかし、紙のパンフレットとデジタルマップを組み合わせることで、これまでにない「直感的な屋内案内システム」を
+    構築することができます。
+  </p>
+  
+  <div class="transition-diagram">
+    <div class="transition-step">
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-12%2017.20.29-fZYA5uH9pqZDJ5g1V1NltSsci4pyG8.png" alt="現在のプロトタイプ" style="width: 100%;">
+        <div class="caption">現在のプロトタイプ</div>
+      </div>
+      <div class="transition-arrow">→</div>
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.38.24-fnt5ZMhhkE8vzX9h1uBA54Vbd7Vg5S.png" alt="開発目標" style="width: 100%;">
+        <div class="caption">開発目標</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="comparison">
+    <div class="comparison-item">
+      <div class="comparison-title">従来のパンフレット</div>
+      <ul>
+        <li>静的な情報のみ</li>
+        <li>現在地や向いている方向が分からない</li>
+        <li>更新に手間とコストがかかる</li>
+        <li>ユーザーの位置に応じた情報提供ができない</li>
+      </ul>
+    </div>
+    <div class="comparison-item">
+      <div class="comparison-title">3Dパンフレット</div>
+      <ul>
+        <li><strong>リアルタイムで情報更新が可能</strong></li>
+        <li><strong>方向センサーで向いている方向を表示</strong></li>
+        <li><strong>デジタル更新で常に最新情報を提供</strong></li>
+        <li><strong>ユーザーの位置に応じた情報提供が可能</strong></li>
+      </ul>
+    </div>
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">3</div>
+</div>
+
+<!-- 目的 -->
+<div class="page">
+  <h1>2. 目的</h1>
+  
+  <div class="super-emphasis" style="font-size: 16pt;">
+    屋内施設における移動のしやすさを向上させるため、<br>
+    方向推定が可能な3Dパンフレットを開発すること
+  </div>
+  
+  <div class="transition-diagram">
+    <div class="transition-step">
+      <div class="transition-description" style="width: 100%;">
+        <div class="key-feature">
+          <div class="key-feature-title">現在の課題</div>
+          <p>屋内施設では自分の位置や向いている方向を把握するのが難しく、目的地までスムーズに移動できない</p>
+        </div>
+        <div style="text-align: center; margin: 10px 0; font-size: 24pt; color: #0284c7;">↓</div>
+        <div class="key-feature">
+          <div class="key-feature-title">提案するソリューション</div>
+          <p>スマートフォンの方位センサーを活用した3Dパンフレットで、リアルタイムの方向推定と直感的なナビゲーションを実現</p>
+        </div>
+        <div style="text-align: center; margin: 10px 0; font-size: 24pt; color: #0284c7;">↓</div>
+        <div class="key-feature">
+          <div class="key-feature-title">期待される効果</div>
+          <p>施設内での移動がスムーズになり、ユーザー体験の向上と施設管理者の運用効率化を実現</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <h2>2.1 方向推定を活用した直感的なナビゲーションの実現</h2>
+  <p>
+    スマートフォンの方位センサーを活用し、リアルタイムで進むべき方向を提示することで、直感的なナビゲーションを実現します。
+    ユーザーは自分が向いている方向と目的地の方向を視覚的に理解できるため、迷うことなく目的地にたどり着くことができます。
+  </p>
+  
+  <div class="image-container">
+    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.38.24-fnt5ZMhhkE8vzX9h1uBA54Vbd7Vg5S.png" alt="方向推定の例">
+    <div class="caption">図1: スマートフォンの方位センサーを活用した方向推定の例</div>
+  </div>
+  
+  <div class="emphasis">
+    複数階にまたがる施設では、階層間の移動も含めたナビゲーションを提供することで、
+    エレベーターやエスカレーターの位置も含めた最適なルート案内を実現します。
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">4</div>
+</div>
+
+<!-- 目的（続き） -->
+<div class="page">
+  <h2>2.2 デジタルと紙のパンフレットの融合</h2>
+  <p>
+    紙のパンフレットの配布のしやすさとデジタルマップのインタラクティブ性を組み合わせることで、
+    最適な情報提供を行います。具体的には、紙のパンフレットにQRコードを印刷し、
+    スマートフォンでスキャンすることで、デジタルマップにアクセスできるようにします。
+  </p>
+  
+  <div class="transition-diagram">
+    <div class="transition-step">
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.33.55-BXPvpWfpEqxr2MvJIYbcOIrOlIs2dP.png" alt="紙のパンフレット" style="width: 100%;">
+        <div class="caption">紙のパンフレット</div>
+      </div>
+      <div class="transition-arrow">+</div>
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.38.24-fnt5ZMhhkE8vzX9h1uBA54Vbd7Vg5S.png" alt="デジタルマップ" style="width: 100%;">
+        <div class="caption">デジタルマップ</div>
+      </div>
+    </div>
+    <div style="text-align: center; margin: 10px 0; font-size: 24pt; color: #0284c7;">↓</div>
+    <div class="super-emphasis" style="margin-top: 0;">
+      紙とデジタルの利点を組み合わせた新しい案内システム
+    </div>
+  </div>
+  
+  <div class="highlight-box">
+    <h3 style="margin-top: 0;">紙とデジタルの融合によるメリット：</h3>
+    <ul>
+      <li><strong>紙のパンフレット</strong>：施設の全体像を把握しやすく、電子機器がなくても利用可能</li>
+      <li><strong>デジタルマップ</strong>：リアルタイムの情報更新、方向推定、詳細情報の表示が可能</li>
+      <li><strong>QRコード連携</strong>：紙からデジタルへのスムーズな移行を実現</li>
+    </ul>
+  </div>
+  
+  <h2>2.3 施設管理者にとって簡単な運用システムの構築</h2>
+  <p>
+    施設管理者が簡単にマップを作成・更新できるシステムを提供することで、
+    常に最新の情報を来訪者に提供できる環境を整えます。
+  </p>
+  
+  <div class="image-container">
+    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.39.59-QGysrxAmFnaWpYQpAapZ<Thinking>
+私のレスポンスが途中で切れてしまったようです。切れた部分は以下のURLの最後の部分でした：
+
+`https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.39.59-QGysrxAmFnaWpYQpAapZ`
+
+この後に続くURLの残りの部分と、その後のHTMLコードを続けて提供する必要があります。HTMLドキュメントの残りの部分を完成させます。
+</Thinking>
+
+AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.39.59-QGysrxAmFnaWpYQpAapZcl3ZkN9Idg.png" alt="管理画面の例">
+    <div class="caption">図2: 施設管理者向けの簡単な管理画面イメージ</div>
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">5</div>
+</div>
+
+<!-- 目標 -->
+<div class="page">
+  <h1>3. 目標</h1>
+  
+  <div class="transition-diagram">
+    <div class="transition-step">
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-12%2017.20.29-fZYA5uH9pqZDJ5g1V1NltSsci4pyG8.png" alt="現在のプロトタイプ" style="width: 100%;">
+        <div class="caption">現在のプロトタイプ</div>
+      </div>
+      <div class="transition-arrow">→</div>
+      <div class="transition-description">
+        <ul>
+          <li>基本的な地図表示のみ</li>
+          <li>方向推定機能なし</li>
+          <li>単一階層のみ対応</li>
+          <li>静的な情報表示</li>
+        </ul>
+      </div>
+    </div>
+    <div style="text-align: center; margin: 10px 0; font-size: 24pt; color: #0284c7;">↓</div>
+    <div class="transition-step">
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.38.24-fnt5ZMhhkE8vzX9h1uBA54Vbd7Vg5S.png" alt="開発目標" style="width: 100%;">
+        <div class="caption">開発目標</div>
+      </div>
+      <div class="transition-arrow">→</div>
+      <div class="transition-description">
+        <ul>
+          <li><strong>リアルタイム方向表示</strong></li>
+          <li><strong>目的地までのナビゲーション</strong></li>
+          <li><strong>複数階層対応</strong></li>
+          <li><strong>AR表示モード</strong></li>
+          <li><strong>施設情報のリアルタイム更新</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <h2>3.1 直感的な方向認識が可能なナビゲーションの提供</h2>
+  <p>
+    ユーザーが現在向いている方向を可視化し、目的地までの進行方向をリアルタイムで案内することで、
+    直感的なナビゲーションを提供します。
+  </p>
+  
+  <div class="highlight-box">
+    <h3 style="margin-top: 0;">実現する機能：</h3>
+    <div class="key-feature">
+      <div class="key-feature-title">リアルタイム方向表示</div>
+      <p>スマートフォンのセンサーを活用し、ユーザーが現在向いている方向を地図上に表示</p>
+    </div>
+    <div class="key-feature">
+      <div class="key-feature-title">目的地ナビゲーション</div>
+      <p>目的地までの最適ルートを表示し、進むべき方向を矢印で案内</p>
+    </div>
+    <div class="key-feature">
+      <div class="key-feature-title">階層間ナビゲーション</div>
+      <p>エレベーターやエスカレーターの位置を含めた、階層をまたぐルート案内</p>
+    </div>
+    <div class="key-feature">
+      <div class="key-feature-title">AR表示モード</div>
+      <p>カメラ映像に重ねて方向や目的地を表示するARモードの実装</p>
+    </div>
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">6</div>
+</div>
+
+<!-- 目標（続き） -->
+<div class="page">
+  <h2>3.2 使いやすいマップ編集機能の開発</h2>
+  <p>
+    施設管理者が簡単にマップを作成・更新できる編集機能を開発します。
+    専門的な知識がなくても操作できるインターフェースを提供することで、
+    常に最新の情報を提供できる環境を整えます。
+  </p>
+  
+  <div class="transition-diagram">
+    <div class="transition-step">
+      <div class="transition-image">
+        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.39.59-QGysrxAmFnaWpYQpAapZcl3ZkN9Idg.png" alt="管理画面" style="width: 100%;">
+        <div class="caption">現在の管理画面プロトタイプ</div>
+      </div>
+      <div class="transition-arrow">→</div>
+      <div class="transition-description">
+        <div class="super-emphasis" style="margin: 0; font-size: 14pt;">
+          ドラッグ＆ドロップで<br>誰でも簡単に編集可能
+        </div>
+        <ul style="margin-top: 10px;">
+          <li>専門知識不要</li>
+          <li>リアルタイム更新</li>
+          <li>テンプレート機能</li>
+          <li>複数階層の管理</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <div class="highlight-box">
+    <h3 style="margin-top: 0;">実現する機能：</h3>
+    <ul>
+      <li><strong>ドラッグ＆ドロップ編集</strong>：直感的なUIで、施設管理者が簡単にマップを作成・更新可能</li>
+      <li><strong>階層管理</strong>：複数階層のマップを簡単に作成・管理できる機能</li>
+      <li><strong>ポイント登録</strong>：店舗や施設などのポイントを簡単に登録・編集できる機能</li>
+      <li><strong>情報更新</strong>：営業時間や特別イベントなどの情報を簡単に更新できる機能</li>
+      <li><strong>テンプレート機能</strong>：よく使うレイアウトやデザインをテンプレートとして保存・再利用できる機能</li>
+    </ul>
+  </div>
+  
+  <h2>3.3 多様な用途に適応できる汎用性の確保</h2>
+  <p>
+    様々な施設やイベントで活用できるよう、汎用性の高いシステムを開発します。
+    特定の施設タイプに限定せず、多様なニーズに対応できる柔軟な設計を目指します。
+  </p>
+  
+  <div class="super-emphasis">
+    一度開発すれば、あらゆる屋内施設で活用可能なシステム
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">7</div>
+</div>
+
+<!-- 多様な用途（続き） -->
+<div class="page">
+  <table>
+    <tr>
+      <th>用途</th>
+      <th>具体例</th>
+      <th>特徴・要件</th>
+    </tr>
+    <tr>
+      <td><strong>商業施設</strong></td>
+      <td>ショッピングモール、デパート</td>
+      <td>店舗情報の更新頻度が高い、セール情報などの一時的な情報が多い</td>
+    </tr>
+    <tr>
+      <td><strong>イベント会場</strong></td>
+      <td>展示会、見本市、コンサート</td>
+      <td>短期間の利用、ブース配置が頻繁に変更される</td>
+    </tr>
+    <tr>
+      <td>教育機関</td>
+      <td>大学キャンパス、学校</td>
+      <td>広大な敷地、複数の建物、季節によって利用状況が変化</td>
+    </tr>
+    <tr>
+      <td>医療施設</td>
+      <td>病院、クリニックモール</td>
+      <td>分かりやすさが特に重要、バリアフリー情報の提供</td>
+    </tr>
+    <tr>
+      <td>公共施設</td>
+      <td>駅構内、空港、博物館</td>
+      <td>多言語対応、観光情報との連携</td>
+    </tr>
+  </table>
+  
+  <div class="transition-diagram">
+    <h3 style="text-align: center; color: #0284c7; margin-bottom: 15px;">導入効果の比較</h3>
+    <div class="transition-step">
+      <div class="transition-description" style="width: 48%;">
+        <div class="comparison-title">導入前</div>
+        <ul>
+          <li>施設内で迷う来訪者が多い</li>
+          <li>案内スタッフの負担が大きい</li>
+          <li>パンフレットの印刷・更新コストがかかる</li>
+          <li>情報が古くなりやすい</li>
+          <li>バリアフリー情報が不足</li>
+        </ul>
+      </div>
+      <div class="transition-arrow">→</div>
+      <div class="transition-description" style="width: 48%;">
+        <div class="comparison-title">導入後</div>
+        <ul>
+          <li><strong>来訪者が迷わず目的地に到着</strong></li>
+          <li><strong>案内スタッフの負担軽減</strong></li>
+          <li><strong>デジタル更新でコスト削減</strong></li>
+          <li><strong>常に最新情報を提供可能</strong></li>
+          <li><strong>バリアフリールートの案内が可能</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <div class="image-container">
+    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88%202025-03-09%2022.38.24-fnt5ZMhhkE8vzX9h1uBA54Vbd7Vg5S.png" alt="多様な施設での活用例">
+    <div class="caption">図3: 多様な施設での活用例</div>
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">8</div>
+</div>
+
+<!-- 開発スケジュール -->
+<div class="page">
+  <h1>4. 開発スケジュール</h1>
+  
+  <div class="super-emphasis">
+    3つのフェーズに分けて開発を進め、<br>
+    約6-9ヶ月での完成を目指します
+  </div>
+  
+  <div class="transition-diagram">
+    <div class="transition-step">
+      <div class="transition-description" style="width: 100%;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+          <div style="width: 30%; text-align: center; background-color: #dbeafe; padding: 10px; border-radius: 5px; font-weight: bold; color: #1e40af;">
+            フェーズ1<br>基本機能開発<br>(2-3ヶ月)
+          </div>
+          <div style="width: 30%; text-align: center; background-color: #dbeafe; padding: 10px; border-radius: 5px; font-weight: bold; color: #1e40af;">
+            フェーズ2<br>管理機能開発<br>(2-3ヶ月)
+          </div>
+          <div style="width: 30%; text-align: center; background-color: #dbeafe; padding: 10px; border-radius: 5px; font-weight: bold; color: #1e40af;">
+            フェーズ3<br>テストと改善<br>(2-3ヶ月)
+          </div>
+        </div>
+        <div style="height: 2px; background-color: #0284c7; margin: 10px 0 20px 0;"></div>
+      </div>
+    </div>
+  </div>
+  
+  <h2>4.1 フェーズ1：基本機能の開発（2-3ヶ月）</h2>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-date">1ヶ月目</div>
+      <div class="timeline-content">
+        <strong>3Dマップの表示機能の実装</strong>
+        <ul>
+          <li>基本的なマップ表示機能の開発</li>
+          <li>3D表示エンジンの実装</li>
+          <li>階層切り替え機能の実装</li>
+        </ul>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">2ヶ月目</div>
+      <div class="timeline-content">
+        <strong>方向推定アルゴリズムの開発</strong>
+        <ul>
+          <li>スマートフォンセンサーからの方位データ取得</li>
+          <li>方向推定アルゴリズムの実装</li>
+          <li>方向表示UIの開発</li>
+        </ul>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">3ヶ月目</div>
+      <div class="timeline-content">
+        <strong>基本的なナビゲーション機能の実装</strong>
+        <ul>
+          <li>目的地設定機能の開発</li>
+          <li>ルート検索アルゴリズムの実装</li>
+          <li>ナビゲーション表示UIの開発</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">9</div>
+</div>
+
+<!-- 開発スケジュール（続き） -->
+<div class="page">
+  <h2>4.2 フェーズ2：管理機能の開発（2-3ヶ月）</h2>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-date">4ヶ月目</div>
+      <div class="timeline-content">
+        <strong>マップ編集インターフェースの開発</strong>
+        <ul>
+          <li>ドラッグ＆ドロップ編集機能の実装</li>
+          <li>ポイント登録・編集機能の開発</li>
+          <li>テンプレート機能の実装</li>
+        </ul>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">5ヶ月目</div>
+      <div class="timeline-content">
+        <strong>データ管理システムの構築</strong>
+        <ul>
+          <li>データベース設計と実装</li>
+          <li>API開発</li>
+          <li>データ同期機能の実装</li>
+        </ul>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">6ヶ月目</div>
+      <div class="timeline-content">
+        <strong>施設情報登録機能の実装</strong>
+        <ul>
+          <li>施設情報管理画面の開発</li>
+          <li>情報更新機能の実装</li>
+          <li>アクセス権限管理の実装</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <h2>4.3 フェーズ3：テストと改善（2-3ヶ月）</h2>
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-date">7ヶ月目</div>
+      <div class="timeline-content">
+        <strong>実際の施設でのプロトタイプテスト</strong>
+        <ul>
+          <li>協力施設でのテスト環境構築</li>
+          <li>実地テストの実施</li>
+          <li>テスト結果の分析</li>
+        </ul>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">8ヶ月目</div>
+      <div class="timeline-content">
+        <strong>ユーザーフィードバックの収集と分析</strong>
+        <ul>
+          <li>ユーザーテストの実施</li>
+          <li>アンケート調査</li>
+          <li>フィードバック分析と改善点の洗い出し</li>
+        </ul>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-date">9ヶ月目</div>
+      <div class="timeline-content">
+        <strong>機能の改善と最適化</strong>
+        <ul>
+          <li>UI/UXの改善</li>
+          <li>パフォーマンスの最適化</li>
+          <li>バグ修正と安定性向上</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  
+  <div class="transition-diagram" style="margin-top: 20px;">
+    <div class="transition-step">
+      <div class="transition-description" style="width: 100%;">
+        <div class="super-emphasis" style="margin: 0;">
+          プロジェクト完了後は、協力施設での試験運用を経て<br>
+          様々な施設への展開を進めていきます
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">
+    © 2025 インタラクティブマップ開発チーム
+  </div>
+  <div class="page-number">10</div>
+</div>
+
+</body>
+</html>
