@@ -59,10 +59,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <head>
-        <meta property="og:image" content="https://pamfree.com/pamfree.png" />
-        <meta name="twitter:image" content="https://pamfree.com/pamfree.png" />
-      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>
           <NavigationBar /> 
