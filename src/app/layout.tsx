@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'ja_JP',
-    url: 'https://pamfree.com/',
+    url: 'https://www.pamfree.com/',
     title: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
     description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
     siteName: 'Pamfree',
