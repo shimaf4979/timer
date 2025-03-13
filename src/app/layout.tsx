@@ -39,33 +39,63 @@ const geistMono = Geist_Mono({
 //   },
 // };
 
+// export const metadata: Metadata = {
+//   title: "Pamfree",
+//   description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+//   icons: {
+//     icon: "/logo.svg",
+//   },
+//   openGraph: {
+//     title: "Pamfree",
+//     description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+//     type: "website",
+//     url: "https://pamfree.com/",
+//     images: [
+//       {
+//         url: "https://pamfree.com/logo.svg",
+//       },
+//     ],
+//   },
+//   twitter: {
+//     card: "summary_large_image", // 画像付きカードを表示
+//     title: "Pamfree",
+//     description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+//     site: "@nitech_citizen", // Twitter アカウント
+//     creator: "@nitech_citizen", // 作成者の Twitter アカウント
+//     images: ["https://pamfree.com/pamfree.png"],
+//   },
+// };
+
+
 export const metadata: Metadata = {
-  title: "Pamfree",
-  description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
-  icons: {
-    icon: "/logo.svg",
+  title: {
+    template: '%s | Pamfree',
+    default: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
   },
+  description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
   openGraph: {
-    title: "Pamfree",
-    description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
-    type: "website",
-    url: "https://pamfree.com/",
+    type: 'website',
+    locale: 'ja_JP',
+    url: 'https://pamfree.com/',
+    title: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
+    description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
+    siteName: 'Pamfree',
     images: [
       {
-        url: "https://pamfree.com/logo.svg",
+        url: 'https://pamfree.com/pamfree.png', // 固定のOGP画像URLを指定
+        width: 1200,
+        height: 630,
+        alt: 'PamfreeのOGP画像',
       },
     ],
   },
   twitter: {
-    card: "summary_large_image", // 画像付きカードを表示
-    title: "Pamfree",
-    description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
-    site: "@nitech_citizen", // Twitter アカウント
-    creator: "@nitech_citizen", // 作成者の Twitter アカウント
-    images: ["https://pamfree.com/pamfree.png"],
+    card: 'summary_large_image',
+    title: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
+    description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
+    images: ['https://pamfree.com/pamfree.png'], // 固定のOGP画像URLを指定
   },
 };
-
 
 
 
