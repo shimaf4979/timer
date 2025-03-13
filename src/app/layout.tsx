@@ -44,18 +44,18 @@ const geistMono = Geist_Mono({
 
 
 export const metadata: Metadata = {
-  title: "電子パンフレットアプリ",
+  title: "Pamfree",
   description:
     "地図やフロアプランをインタラクティブに変える電子パンフレット。",
   openGraph: {
-    title: "電子パンフレットアプリ",
+    title: "Pamfree",
     description:
       "地図やフロアプランをインタラクティブに変える電子パンフレット。",
     type: "website",
-    url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/", // 実際のURLに変更
+    url: "https://timer-git-main-yudaishimamuras-projects.vercel.app/", // 実際のURLに変更
     images: [
       {
-        url: "https://timer-4l94k5tg0-yudaishimamuras-projects.vercel.app/ffff.jpeg", // 絶対URLに変更
+        url: "https://timer-git-main-yudaishimamuras-projects.vercel.app/pamfree.png", // 絶対URLに変更
       },
     ],
   },
