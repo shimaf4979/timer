@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     url: "https://pamfree.com/", // 実際のURLに変更
     images: [
       {
-        url: "https://pamfree.com/logo.svg", // 絶対URLに変更
+        url: "https://pamfree.com/pamfree.png", // 絶対URLに変更
         width: 80,
         height: 80,
       },
