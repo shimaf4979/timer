@@ -18,24 +18,51 @@ const geistMono = Geist_Mono({
 })
 
 
+// export const metadata: Metadata = {
+//   title: "Pamfree",
+//   description:
+//     "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+//   icons: {
+//     icon: "/logo.svg",
+//   },
+//   openGraph: {
+//     title: "Pamfree",
+//     description:
+//       "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+//     type: "website",
+//     url: "https://pamfree.com/", // 実際のURLに変更
+//     images: [
+//       {
+//         url: "https://pamfree.com/pamfree.png", // 絶対URLに変更
+//       },
+//     ],
+//   },
+// };
+
 export const metadata: Metadata = {
   title: "Pamfree",
-  description:
-    "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+  description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
     title: "Pamfree",
-    description:
-      "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+    description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
     type: "website",
-    url: "https://pamfree.com/", // 実際のURLに変更
+    url: "https://pamfree.com/",
     images: [
       {
-        url: "https://pamfree.com/pamfree.png", // 絶対URLに変更
+        url: "https://pamfree.com/logo.svg",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image", // 画像付きカードを表示
+    title: "Pamfree",
+    description: "地図やフロアプランをインタラクティブに変える電子パンフレット。",
+    site: "@nitech_citizen", // Twitter アカウント
+    creator: "@nitech_citizen", // 作成者の Twitter アカウント
+    images: ["https://pamfree.com/pamfree.png"],
   },
 };
 
