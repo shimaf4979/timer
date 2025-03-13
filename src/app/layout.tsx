@@ -86,8 +86,6 @@ export const metadata: Metadata = {
     images: [
       {
         url: 'https://pamfree.com/pamfree.png', // 固定のOGP画像URLを指定
-        width: 1200,
-        height: 630,
         alt: 'PamfreeのOGP画像',
       },
     ],
@@ -109,6 +107,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
+      <head>
+        <meta property="og:image" content="https://pamfree.com/pamfree.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://pamfree.com/pamfree.png" />
+        <meta name="twitter:description" content="地図やフロアプランをインタラクティブに変える電子パンフレット。" />
+        <meta name="twitter:title" content="Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
             <SessionProvider>
               <NavigationBar /> 
