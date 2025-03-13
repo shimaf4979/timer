@@ -31,6 +31,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "https://pamfree.com/logo.svg", // 絶対URLに変更
+        width: 150,
+        height: 150,
       },
     ],
   },

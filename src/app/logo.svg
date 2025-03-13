@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="3750"
+   height="1000"
+   viewBox="0 0 375 100"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   sodipodi:docname="pamfree.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="px"
+     inkscape:lockguides="true"
+     showgrid="true"
+     inkscape:zoom="0.1767767"
+     inkscape:cx="1793.2228"
+     inkscape:cy="692.96465"
+     inkscape:window-width="1920"
+     inkscape:window-height="1111"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <sodipodi:guide
+       position="0,100"
+       orientation="0,1000"
+       id="guide1"
+       inkscape:locked="true" />
+    <sodipodi:guide
+       position="100,100"
+       orientation="1000,0"
+       id="guide2"
+       inkscape:locked="true" />
+    <sodipodi:guide
+       position="100,0"
+       orientation="0,-1000"
+       id="guide3"
+       inkscape:locked="true" />
+    <sodipodi:guide
+       position="0,0"
+       orientation="-1000,0"
+       id="guide4"
+       inkscape:locked="true" />
+    <inkscape:grid
+       id="grid4"
+       units="px"
+       originx="50"
+       originy="50"
+       spacingx="2"
+       spacingy="2"
+       empcolor="#0000e5"
+       empopacity="0.30196078"
+       color="#0099e5"
+       opacity="0.14901961"
+       empspacing="5"
+       dotted="false"
+       gridanglex="30"
+       gridanglez="30"
+       visible="true"
+       snapvisiblegridlinesonly="true" />
+  </sodipodi:namedview>
+  <defs
+     id="defs1" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       id="path40"
+       style="display:inline;fill:#0028fc;fill-opacity:1;stroke:none;stroke-width:0.0997795;stroke-opacity:1"
+       d="m 330,50 c -11.04567,0 -20,8.954327 -20,20 0,11.045673 8.95433,20 20,20 8.95509,0 16.53434,-5.886042 19.08301,-14 H 338 c -1.82442,2.428713 -4.72851,4 -8,4 -4.1002,0 -7.62206,-2.468797 -9.16543,-6 h 28.76465 C 349.86161,72.707474 350,71.369961 350,70 350,58.954327 341.04567,50 330,50 Z m 0,10 c 4.83789,0 8.87305,3.435561 9.79961,8 h -19.59922 c 0.92656,-4.564439 4.96172,-8 9.79961,-8 z"
+       sodipodi:nodetypes="sssccsccsssccs"
+       inkscape:label="e2" />
+    <path
+       id="path39"
+       style="fill:#0028fc;fill-opacity:1;stroke:none;stroke-width:0.0997795;stroke-opacity:1"
+       d="m 288,50 c -11.04567,0 -20,8.954327 -20,20 0,11.045673 8.95433,20 20,20 8.95509,0 16.53434,-5.886042 19.08301,-14 H 296 c -1.82442,2.428713 -4.72851,4 -8,4 -4.1002,0 -7.62206,-2.468797 -9.16543,-6 h 28.76465 C 307.86161,72.707474 308,71.369961 308,70 308,58.954327 299.04567,50 288,50 Z m 0,10 c 4.83789,0 8.87305,3.435561 9.79961,8 h -19.59922 c 0.92656,-4.564439 4.96172,-8 9.79961,-8 z"
+       sodipodi:nodetypes="sssccsccsssccs"
+       inkscape:label="e1" />
+    <path
+       id="path44"
+       style="fill:#0028fc;fill-opacity:1;stroke:none;stroke-width:0.0997795;stroke-opacity:1"
+       d="m 226,50 v 40 h 10 V 70 c 0,-5.522825 4.47718,-10 10,-10 5.52282,0 10,4.477175 10,10 h 10 c 0,-11.045673 -8.95433,-20 -20,-20 -3.64415,0 -7.05757,0.979416 -10,2.682227 V 50 Z"
+       inkscape:label="r" />
+    <path
+       id="path49"
+       style="fill:#0028fc;fill-opacity:1;stroke:none;stroke-width:0.100167;stroke-opacity:1"
+       d="m 220,20 c -11.04567,0 -20,8.954327 -20,20 v 10 h -10 v 10 h 10 v 30 h 10 V 60 h 10 V 50 H 210 V 40 c 0,-5.52283 4.47717,-10 10,-10 5.52283,0 10,4.47717 10,10 h 10 c 0,-11.045673 -8.95433,-20 -20,-20 z"
+       inkscape:label="f" />
+    <path
+       id="path67"
+       d="M 110,50.049805 C 98.981828,50.049767 90.049766,58.981829 90.049805,70 H 90 v 20 h 10 V 70 h 5.9e-4 C 100.00057,69.9922 100,69.984548 100,69.976758 99.99999,64.466776 104.47718,59.999999 110,60 c 5.52282,-10e-7 10.00001,4.466776 10,9.976758 0,0.0078 -5.7e-4,0.01545 -5.9e-4,0.02324 H 120 v 20 h 10 V 70 h 5.9e-4 C 130.00057,69.9922 130,69.98455 130,69.97676 c -1e-5,-5.509987 4.47717,-9.976759 10,-9.976758 5.52283,-1e-6 10.00001,4.466771 10,9.976758 0,0.0078 -5.7e-4,0.01545 -5.9e-4,0.02324 H 150 v 20 h 10 V 70 h -0.0498 c 3e-5,-11.018182 -8.93202,-19.950233 -19.9502,-19.950195 -5.98106,-2.1e-5 -11.34345,2.635536 -15,6.804492 -3.65655,-4.168957 -9.01895,-6.804513 -15,-6.804492 z"
+       transform="translate(30)"
+       inkscape:label="m"
+       style="fill:#0028fc;fill-opacity:1;stroke:none;stroke-opacity:1" />
+    <path
+       id="path73"
+       style="fill:#0028fc;fill-opacity:1;stroke:none;stroke-width:0.100108;stroke-opacity:1"
+       d="m 87.999947,50 c -11.018051,-3e-5 -19.950001,8.937866 -19.95,19.963281 -10e-7,11.025415 8.931949,19.963311 19.95,19.963281 6.534476,1.8e-5 12.334913,-3.144064 15.973833,-8.002539 l 4.02617,8.052539 h 10 l -10,-20 10.0498,-19.950195 h -10.0498 l -4.00918,7.998437 C 100.35292,53.15357 94.544479,49.999983 87.999947,50 Z m 0,9.976562 c 5.52283,-1e-6 9.999999,4.477169 10,10 -1e-6,5.522831 -4.47717,10.000001 -10,10 -5.52283,10e-7 -9.999999,-4.477169 -10,-10 10e-7,-5.522831 4.47717,-10.000001 10,-10 z"
+       inkscape:label="a" />
+    <path
+       d="M 50,10 C 36.000028,10 24,22.000028 24,36 24,49.999972 40,90 40,90 L 50,62 C 63.999972,62 76,49.999972 76,36 76,22.000028 63.999972,10 50,10 Z m 0,12 c 7.731979,0 14,6.268021 14,14 0,7.731979 -6.268021,14 -14,14 -7.731979,0 -14,-6.268021 -14,-14 0,-7.731979 6.268021,-14 14,-14 z"
+       style="display:inline;fill:#0028fc;fill-opacity:1;stroke:none;stroke-width:0.1;stroke-opacity:1"
+       id="path75"
+       inkscape:label="p" />
+  </g>
+</svg>
