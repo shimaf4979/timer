@@ -1,73 +1,67 @@
-// components/QRCodeGenerator.tsx の更新
+// components/QRCodeGenerator.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import ImprovedModal from './ImprovedModal';
+import { useState } from 'react';
+import Modal from './Modal';
+import { QRCodeCanvas } from 'qrcode.react';
 
 interface QRCodeGeneratorProps {
   url: string;
   title?: string;
-  publicEditUrl?: string; // 公開編集用URL（オプション）
+  publicEditUrl?: string;
+  className?: string;
 }
 
-const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title, publicEditUrl }) => {
+export default function QRCodeGenerator({
+  url,
+  title,
+  publicEditUrl,
+  className = ''
+}: QRCodeGeneratorProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [fullUrl, setFullUrl] = useState('');
-  const [fullPublicEditUrl, setFullPublicEditUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'view' | 'edit'>('view');
+  
+  // 完全なURLを構築
+  const getFullUrl = (path: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}${path}`;
+  };
+  
+  const fullViewUrl = getFullUrl(url);
+  const fullEditUrl = publicEditUrl ? getFullUrl(publicEditUrl) : '';
 
-  useEffect(() => {
-    // 完全なURLを構築（クライアントサイドでのみ実行）
-    if (typeof window !== 'undefined') {
-      const origin = window.location.origin;
-      setFullUrl(`${origin}${url}`);
-      if (publicEditUrl) {
-        setFullPublicEditUrl(`${origin}${publicEditUrl}`);
-      }
-    }
-  }, [url, publicEditUrl]);
-
-  // モーダル開閉時にbodyにクラスを追加/削除
-  useEffect(() => {
-    if (isModalOpen) {
-      document.body.classList.add('qr-modal-open');
-    } else {
-      document.body.classList.remove('qr-modal-open');
-    }
-    
-    return () => {
-      document.body.classList.remove('qr-modal-open');
-    };
-  }, [isModalOpen]);
+  // URLをクリップボードにコピー
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
 
   return (
     <>
       <button
         onClick={() => setIsModalOpen(true)}
-        className="inline-flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors cursor-pointer"
+        className={`inline-flex items-center px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors ${className}`}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zm-2 7a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zm8-12a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2V5h1v1h-1zm-1 4a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1v-3a1 1 0 00-1-1h-3zm1 2v-1h1v1h-1z" clipRule="evenodd" />
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
         </svg>
-        QR
+        QRコード
       </button>
 
-      <ImprovedModal 
-        isOpen={isModalOpen} 
+      <Modal
+        isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="QRコード"
         size="md"
       >
         <div className="flex flex-col items-center">
-          {/* タブ切り替え（公開編集URLがある場合のみ） */}
+          {/* タブ切り替え (公開編集URLがある場合のみ) */}
           {publicEditUrl && (
-            <div className="flex w-full mb-4 border-b">
+            <div className="flex w-full mb-6 border-b">
               <button
                 onClick={() => setActiveTab('view')}
                 className={`flex-1 py-2 text-center border-b-2 ${
-                  activeTab === 'view' 
-                    ? 'border-blue-500 text-blue-600 font-medium' 
+                  activeTab === 'view'
+                    ? 'border-blue-500 text-blue-600 font-medium'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -76,8 +70,8 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title, publicEdi
               <button
                 onClick={() => setActiveTab('edit')}
                 className={`flex-1 py-2 text-center border-b-2 ${
-                  activeTab === 'edit' 
-                    ? 'border-purple-500 text-purple-600 font-medium' 
+                  activeTab === 'edit'
+                    ? 'border-purple-500 text-purple-600 font-medium'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -88,12 +82,13 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title, publicEdi
           
           {activeTab === 'view' ? (
             <>
-              <div className="flex justify-center mb-4 bg-white p-4 rounded">
-                <QRCodeSVG
-                  value={fullUrl}
+              <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+                <QRCodeCanvas
+                  value={fullViewUrl}
                   size={200}
                   level="H"
-                  includeMargin={true}
+                  includeMargin
+                  className="mx-auto"
                 />
               </div>
               
@@ -101,34 +96,43 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title, publicEdi
                 このQRコードを読み取ると、閲覧用ページにアクセスできます。
               </p>
               
-              <div className="flex space-x-4">
+              <div className="w-full flex items-center mb-4">
+                <input
+                  title="閲覧用URL"
+                  placeholder="閲覧用URL"
+                  type="text"
+                  value={fullViewUrl}
+                  readOnly
+                  className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
                 <button
-                  onClick={() => {
-                    window.open(fullUrl, '_blank');
-                  }}
-                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                  onClick={() => copyToClipboard(fullViewUrl)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-r-md hover:bg-blue-600"
+                  title="URLをコピー"
                 >
-                  閲覧者ページへ
-                </button>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(fullUrl);
-                    alert('URLをクリップボードにコピーしました');
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  URLをコピー
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                  </svg>
                 </button>
               </div>
+              
+              <button
+                onClick={() => window.open(fullViewUrl, '_blank')}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 w-full"
+              >
+                閲覧ページを開く
+              </button>
             </>
           ) : (
             <>
-              <div className="flex justify-center mb-4 bg-white p-4 rounded">
-                <QRCodeSVG
-                  value={fullPublicEditUrl}
+              <div className="bg-white p-4 rounded-lg shadow-sm mb-4">
+                <QRCodeCanvas
+                  value={fullEditUrl}
                   size={200}
                   level="H"
-                  includeMargin={true}
+                  includeMargin
+                  className="mx-auto"
                 />
               </div>
               
@@ -137,31 +141,37 @@ const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ url, title, publicEdi
                 誰でもニックネームを設定してピンの追加・編集ができます。
               </p>
               
-              <div className="flex space-x-4">
+              <div className="w-full flex items-center mb-4">
+                <input
+                  title="公開編集用URL"
+                  placeholder="公開編集用URL"
+                  type="text"
+                  value={fullEditUrl}
+                  readOnly
+                  className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
                 <button
-                  onClick={() => {
-                    window.open(fullPublicEditUrl, '_blank');
-                  }}
-                  className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600"
+                  onClick={() => copyToClipboard(fullEditUrl)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-r-md hover:bg-blue-600"
+                  title="URLをコピー"
                 >
-                  公開編集ページへ
-                </button>
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(fullPublicEditUrl);
-                    alert('URLをクリップボードにコピーしました');
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  URLをコピー
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                  </svg>
                 </button>
               </div>
+              
+              <button
+                onClick={() => window.open(fullEditUrl, '_blank')}
+                className="px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 w-full"
+              >
+                公開編集ページを開く
+              </button>
             </>
           )}
         </div>
-      </ImprovedModal>
+      </Modal>
     </>
   );
-};
-
-export default QRCodeGenerator;
+}

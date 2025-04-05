@@ -1,257 +1,199 @@
-// app/admin/users/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { signIn } from 'next-auth/react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { ArrowRight, Mail, Lock, CheckCircle } from 'lucide-react';
+import LoadingIndicator from '@/components/Loading';
 
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  created_at: string;
-};
-
-export default function AdminUsersPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+// 検索パラメータを使用する部分を別コンポーネントに分離
+function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newRole, setNewRole] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  
+  // useSearchParamsはここで使用
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const registered = searchParams.get('registered') === 'true';
 
-  useEffect(() => {
-    if (status === 'loading') return;
-
-    // 非認証ユーザーはログインページへリダイレクト
-    if (status === 'unauthenticated') {
-      router.push('/login');
-      return;
-    }
-
-    // 管理者以外は403ページやダッシュボードへリダイレクト
-    if (session?.user?.role !== 'admin') {
-      router.push('/dashboard');
-      return;
-    }
-
-    // ユーザー一覧を取得
-    fetchUsers();
-  }, [session, status, router]);
-
-  const fetchUsers = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
     setLoading(true);
+
     try {
-      const response = await fetch('/api/admin/users');
-      if (!response.ok) {
-        throw new Error('ユーザー一覧の取得に失敗しました');
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        setError('メールアドレスまたはパスワードが正しくありません');
+        setLoading(false);
+        return;
       }
-      const data = await response.json();
-      setUsers(data);
+
+      router.push(callbackUrl);
+      router.refresh();
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('エラーが発生しました');
-      }
-    } finally {
+      console.error('ログインエラー:', error);
+      setError('ログイン中にエラーが発生しました');
       setLoading(false);
     }
   };
 
-  const openRoleModal = (user: User) => {
-    setSelectedUser(user);
-    setNewRole(user.role);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedUser(null);
-  };
-
-  const updateUserRole = async () => {
-    if (!selectedUser) return;
-
-    try {
-      const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'ユーザー役割の更新に失敗しました');
-      }
-
-      // 成功したらユーザー一覧を更新
-      fetchUsers();
-      closeModal();
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('エラーが発生しました');
-      }
-    }
-  };
-
-  const deleteUser = async (userId: string) => {
-    if (!window.confirm('このユーザーを削除してもよろしいですか？')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'ユーザーの削除に失敗しました');
-      }
-
-      // 成功したらユーザー一覧を更新
-      fetchUsers();
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('エラーが発生しました');
-      }
-    }
-  };
-
-  if (loading && status !== 'loading') {
-    return (
-      <div className="container mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">ユーザー管理</h1>
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">ユーザー管理</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-8"
+        >
+          <Link href="/" className="inline-block mb-6">
+            <div className="flex items-center justify-center h-12 w-12 rounded-full bg-sky-100 text-sky-600 mx-auto">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+            </div>
+          </Link>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">
+            アカウントにログイン
+          </h2>
+          <p className="text-slate-600">
+            または{' '}
+            <Link href="/register" className="font-medium text-sky-600 hover:text-sky-700 transition-colors">
+              新規登録
+            </Link>
+          </p>
+        </motion.div>
+        
+        {registered && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center"
+          >
+            <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+            <span>登録が完了しました。ログインしてください。</span>
+          </motion.div>
+        )}
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: registered ? 0.2 : 0.1 }}
+          className="bg-white p-8 rounded-xl shadow-sm border border-slate-200"
+        >
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email-address" className="block text-sm font-medium text-slate-700 mb-1">
+                  メールアドレス
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="email-address"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-slate-900 placeholder-slate-400 bg-white"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1">
+                  パスワード
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    required
+                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-slate-900 placeholder-slate-400 bg-white"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
+            {error && (
+              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
+                {error}
+              </div>
+            )}
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                名前
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                メールアドレス
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                役割
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                登録日
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500">{user.email}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
-                  }`}>
-                    {user.role === 'admin' ? '管理者' : 'ユーザー'}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-sky-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    ログイン中...
                   </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(user.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => openRoleModal(user)}
-                    className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    disabled={session?.user?.id === user.id}
-                  >
-                    役割変更
-                  </button>
-                  <button
-                    onClick={() => deleteUser(user.id)}
-                    className="text-red-600 hover:text-red-900"
-                    disabled={session?.user?.id === user.id}
-                  >
-                    削除
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                ) : (
+                  <span className="flex items-center">
+                    ログイン
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </span>
+                )}
+              </button>
+            </div>
+          </form>
+        </motion.div>
+        
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="text-center mt-8 text-sm text-slate-500"
+        >
+          <p>
+            ログインすることで、<Link href="/terms" className="text-sky-600 hover:text-sky-700">利用規約</Link>および
+            <Link href="/privacy" className="text-sky-600 hover:text-sky-700">プライバシーポリシー</Link>に同意したことになります。
+          </p>
+        </motion.div>
       </div>
-
-      {/* 役割変更モーダル */}
-      {isModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold mb-4">ユーザー役割の変更</h3>
-            <p className="mb-4">
-              <span className="font-medium">{selectedUser.name}</span> の役割を変更します。
-            </p>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                役割
-              </label>
-              <select
-                title="役割"
-                value={newRole}
-                onChange={(e) => setNewRole(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="user">一般ユーザー</option>
-                <option value="admin">管理者</option>
-              </select>
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={updateUserRole}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                保存
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
+  );
+}
+
+// メインのコンポーネント
+export default function Login() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingIndicator message="読み込み中..." isFullScreen={false} />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

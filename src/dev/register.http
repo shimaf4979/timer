@@ -1,0 +1,30 @@
+@baseUrl = https://api.pamfree.com/api
+
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTU3NDJiMjAtZjFlNi00MTlmLWE1YzctZmJhMDQ2MWEyMmE1IiwiZW1haWwiOiJ0ZXN0QHRlc3QuY29tIiwicm9sZSI6InVzZXIiLCJleHAiOjE3NDM3NDIzNzksImlhdCI6MTc0MzY1NTk3OX0.uSR3LtHYYqo9HglNC7sWbi9wp2umRzLeLm1P57Q3ZFw
+
+### ヘルスチェック
+GET https://api.pamfree.com/health
+
+
+### ユーザー登録
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+    "name": "test",
+    "email": "test@test.com",
+    "password": "Yamamoto3412"
+}
+
+### ログイン
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "test@test.com",
+    "password": "Yamamoto3412"
+}
+
+### ユーザー情報取得
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}

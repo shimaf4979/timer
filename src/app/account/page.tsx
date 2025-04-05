@@ -2,140 +2,115 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/auth';
+import Loading from '@/components/Loading';
 
 export default function AccountPage() {
-  const { data: session, status, update } = useSession();
+  const { user, isAuthenticated, loading, updateProfile, changePassword } = useAuth();
   const router = useRouter();
+  
   const [name, setName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
+  
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
+  const [isProfileUpdating, setIsProfileUpdating] = useState(false);
+  const [isPasswordChanging, setIsPasswordChanging] = useState(false);
+  
+  // ユーザー情報の読み込み
   useEffect(() => {
-    if (status === 'loading') return;
-
-    // 未認証ユーザーはログインページへリダイレクト
-    if (status === 'unauthenticated') {
+    if (!loading && !isAuthenticated) {
       router.push('/login');
-      return;
     }
-
-    // セッションからユーザー名を設定
-    if (session?.user?.name) {
-      setName(session.user.name);
+    
+    if (user) {
+      setName(user.name || '');
     }
-  }, [session, status, router]);
-
+  }, [user, isAuthenticated, loading, router]);
+  
+  // プロフィール更新処理
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
-    setLoading(true);
-
+    setProfileMessage('');
+    setProfileError('');
+    setIsProfileUpdating(true);
+    
     try {
-      const response = await fetch('/api/account/update-profile', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'プロフィールの更新に失敗しました');
-      }
-
-      // セッション情報を更新
-      await update({ name });
-      setMessage('プロフィールを更新しました');
+      await updateProfile(name);
+      setProfileMessage('プロフィールを更新しました');
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('プロフィールの更新中にエラーが発生しました');
-      }
+      setProfileError(error instanceof Error ? error.message : 'プロフィールの更新に失敗しました');
     } finally {
-      setLoading(false);
+      setIsProfileUpdating(false);
     }
   };
-
+  
+  // パスワード変更処理
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage('');
-    setError('');
-
+    setPasswordMessage('');
+    setPasswordError('');
+    
+    // 新しいパスワードの検証
     if (newPassword !== confirmPassword) {
-      setError('新しいパスワードが一致しません');
+      setPasswordError('新しいパスワードが一致しません');
       return;
     }
-
-    setLoading(true);
-
+    
+    if (newPassword.length < 8) {
+      setPasswordError('パスワードは8文字以上にしてください');
+      return;
+    }
+    
+    setIsPasswordChanging(true);
+    
     try {
-      const response = await fetch('/api/account/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'パスワードの変更に失敗しました');
-      }
-
-      setMessage('パスワードを変更しました');
+      await changePassword(currentPassword, newPassword);
+      setPasswordMessage('パスワードを変更しました');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('パスワードの変更中にエラーが発生しました');
-      }
+      setPasswordError(error instanceof Error ? error.message : 'パスワードの変更に失敗しました');
     } finally {
-      setLoading(false);
+      setIsPasswordChanging(false);
     }
   };
-
-  if (status === 'loading') {
+  
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <Loading text="読み込み中..." />
       </div>
     );
   }
-
+  
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">アカウント設定</h1>
-      
-      {message && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {message}
-        </div>
-      )}
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* プロフィール情報 */}
         <div className="bg-white shadow-md rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">プロフィール情報</h2>
+          
+          {profileMessage && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+              {profileMessage}
+            </div>
+          )}
+          
+          {profileError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {profileError}
+            </div>
+          )}
           
           <form onSubmit={handleUpdateProfile}>
             <div className="mb-4">
@@ -146,7 +121,7 @@ export default function AccountPage() {
                 type="email"
                 id="email"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                value={session?.user?.email || ''}
+                value={user?.email || ''}
                 disabled
               />
               <p className="mt-1 text-xs text-gray-500">メールアドレスは変更できません</p>
@@ -169,10 +144,10 @@ export default function AccountPage() {
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isProfileUpdating}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
               >
-                {loading ? '更新中...' : '更新する'}
+                {isProfileUpdating ? '更新中...' : '更新する'}
               </button>
             </div>
           </form>
@@ -181,6 +156,18 @@ export default function AccountPage() {
         {/* パスワード変更 */}
         <div className="bg-white shadow-md rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">パスワード変更</h2>
+          
+          {passwordMessage && (
+            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+              {passwordMessage}
+            </div>
+          )}
+          
+          {passwordError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {passwordError}
+            </div>
+          )}
           
           <form onSubmit={handleChangePassword}>
             <div className="mb-4">
@@ -206,7 +193,7 @@ export default function AccountPage() {
                 type="password"
                 id="new-password"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="新しいパスワード"
+                placeholder="新しいパスワード（8文字以上）"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
@@ -231,10 +218,10 @@ export default function AccountPage() {
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={isPasswordChanging}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300"
               >
-                {loading ? '変更中...' : 'パスワードを変更'}
+                {isPasswordChanging ? '変更中...' : 'パスワードを変更'}
               </button>
             </div>
           </form>

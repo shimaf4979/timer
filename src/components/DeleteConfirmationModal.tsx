@@ -1,75 +1,86 @@
 // components/DeleteConfirmationModal.tsx
-import React from 'react';
+'use client';
+
+import Modal from './Modal';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
   title: string;
   message: string;
   itemName?: string;
+  confirmText?: string;
+  cancelText?: string;
+  isDangerous?: boolean;
+  isDeleting?: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
 }
 
-const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
+export default function DeleteConfirmationModal({
   isOpen,
-  onClose,
-  onConfirm,
   title,
   message,
-  itemName
-}) => {
-  if (!isOpen) return null;
-
+  itemName,
+  confirmText = '削除する',
+  cancelText = 'キャンセル',
+  isDangerous = true,
+  isDeleting = false,
+  onClose,
+  onConfirm
+}: DeleteConfirmationModalProps) {
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
-    >
-      <div 
-        className="absolute inset-0 bg-opacity-40 backdrop-blur-sm"
-        aria-hidden="true"
-      ></div>
-      
-      <div 
-        className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6 z-10 transform transition-all duration-300 ease-in-out animate-modal-appear"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start">
-          <div className="flex-shrink-0">
-            <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-            <div className="mt-2">
-              <p className="text-sm text-gray-500">{message}</p>
-              {itemName && (
-                <p className="mt-1 text-sm font-medium text-gray-800">「{itemName}」</p>
-              )}
-            </div>
-          </div>
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
+      <div className="text-center">
+        <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 mb-4">
+          <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
         </div>
         
-        <div className="mt-6 flex justify-end space-x-3">
-          <button
-            type="button"
-            className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            onClick={onClose}
-          >
-            キャンセル
-          </button>
-          <button
-            type="button"
-            className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            onClick={onConfirm}
-          >
-            削除する
-          </button>
+        <div className="mt-3 text-center">
+          <p className="text-gray-700 mb-4">
+            {message}
+          </p>
+          
+          {itemName && (
+            <p className="text-sm font-medium text-gray-900 mb-4">
+              「{itemName}」
+            </p>
+          )}
+          
+          <div className="mt-4 flex justify-center space-x-4">
+            <button
+              type="button"
+              className="px-4 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none"
+              onClick={onClose}
+              disabled={isDeleting}
+            >
+              {cancelText}
+            </button>
+            
+            <button
+              type="button"
+              className={`px-4 py-2 text-white rounded-md focus:outline-none ${
+                isDangerous ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+              } ${isDeleting ? 'opacity-75 cursor-not-allowed' : ''}`}
+              onClick={onConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  処理中...
+                </span>
+              ) : (
+                confirmText
+              )}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
-};
-
-export default DeleteConfirmationModal;
+}

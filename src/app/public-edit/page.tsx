@@ -1,152 +1,98 @@
-// app/public-edit/page.tsx
+// app/public-edit/[mapId]/page.tsx
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MapData, Floor, Pin, PublicEditor } from '@/types/map-types';
-import PinList from '@/components/PinList';
-import ImprovedView3D from '@/components/ImprovedView3D';
-import NormalView from '@/components/NormalView';
-import ImprovedModal from '@/components/ImprovedModal';
-import LoadingIndicator from '@/components/LoadingIndicator';
-import EnhancedPinViewer from '@/components/EnhancedPinViewer';
-import { getExactImagePosition } from '@/utils/imageExactPositioning';
-import {
-  getEditorFromStorage,
-  verifyEditorToken,
-  registerPublicEditor,
-  addPublicPin,
-  updatePublicPin,
-  deletePublicPin
-} from '@/utils/publicEditHelpers';
+import { ViewerAPI, PublicEditAPI } from '@/lib/api-client';
+import { ViewerMapData, Floor, Pin, PublicEditor } from '@/types';
+import Loading from '@/components/Loading';
+import Modal from '@/components/Modal';
+import MapViewer from '@/components/MapViewer';
+import BookmarkList from '@/components/BookmarkList';
+import PinDetailModal from '@/components/PinDetailModal';
+import PinEditorModal from '@/components/PinEditorModal';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 
-// 公開編集用のメインコンテンツコンポーネント
-function PublicEditContent() {
-  const searchParams = useSearchParams();
-  const mapId = searchParams.get('id') || '';
+// ローカルストレージキー
+const getEditorStorageKey = (mapId: string) => `pamfree_editor_${mapId}`;
+
+export default function PublicEditPage() {
+  const params = useParams();
+  const router = useRouter();
+  const mapId = params.mapId as string;
   
-  // 基本状態
-  const [mapData, setMapData] = useState<MapData | null>(null);
-  const [floors, setFloors] = useState<Floor[]>([]);
-  const [pins, setPins] = useState<Pin[]>([]);
-  const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
-  const [is3DView, setIs3DView] = useState<boolean>(false);
+  // 状態
+  const [viewerData, setViewerData] = useState<ViewerMapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showModalArrows, setShowModalArrows] = useState(true);
+  const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
+  const [editor, setEditor] = useState<PublicEditor | null>(null);
   
-  // 公開編集状態
-  const [editorInfo, setEditorInfo] = useState<PublicEditor | null>(null);
-  const [nickName, setNickName] = useState('');
+  // UI状態
   const [showNicknameModal, setShowNicknameModal] = useState(false);
+  const [nickname, setNickname] = useState('');
+  const [showPinDetailModal, setShowPinDetailModal] = useState(false);
   const [isAddingPin, setIsAddingPin] = useState(false);
-  const [newPinPosition, setNewPinPosition] = useState({ x: 0, y: 0 });
-  const [newPinInfo, setNewPinInfo] = useState({ title: '', description: '' });
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  const [showBookmarks, setShowBookmarks] = useState(true);
+  
+  // 編集関連
   const [editingPin, setEditingPin] = useState<Pin | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showPinEditorModal, setShowPinEditorModal] = useState(false);
+  const [isCreatingPin, setIsCreatingPin] = useState(false);
+  const [pinToDelete, setPinToDelete] = useState<Pin | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // フロントに表示するエリアのインデックス
-  const [frontFloorIndex, setFrontFloorIndex] = useState(0);
-  
-  // レスポンシブ対応
-  const [isMobile, setIsMobile] = useState(false);
-  
-  // コンテナへの参照
-  const containerRef = useRef<HTMLDivElement>(null);
-  const normalViewRef = useRef<HTMLDivElement>(null);
-  
-  // スマホ検出のためのuseEffect
-  useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    
-    return () => {
-      window.removeEventListener('resize', checkIfMobile);
-    };
-  }, []);
-
-  // 既存の編集者情報をローカルストレージから取得
+  // データの取得
   useEffect(() => {
     if (!mapId) return;
     
-    const savedEditor = getEditorFromStorage(mapId);
-    if (savedEditor) {
-      // トークンの検証
-      verifyEditorToken(savedEditor.id, savedEditor.token)
-        .then(({ verified, editorInfo }) => {
-          if (verified && editorInfo) {
-            setEditorInfo(editorInfo);
-          } else {
-            // 無効なトークンの場合はモーダルを表示
-            setShowNicknameModal(true);
-          }
-        });
-    } else {
-      // 保存された情報がない場合はモーダルを表示
-      setShowNicknameModal(true);
-    }
-  }, [mapId]);
-
-  // データ読み込み
-  useEffect(() => {
-    if (!mapId) {
-      setError('マップIDが指定されていません');
-      setLoading(false);
-      return;
-    }
-    
     const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        
-        // APIからマップデータを取得
-        const response = await fetch(`/api/viewer/${mapId}`);
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'データの取得に失敗しました');
-        }
-        
-        const data = await response.json();
+        const data = await ViewerAPI.getMapData(mapId);
         
         // 公開編集が有効かチェック
         if (!data.map.is_publicly_editable) {
-          throw new Error('このマップは公開編集が許可されていません');
+          setError('このマップは公開編集が許可されていません');
+          setLoading(false);
+          return;
         }
         
-        // データを設定
-        setMapData(data.map);
-        setFloors(data.floors);
+        setViewerData(data);
         
-        // 編集者情報が欠落しているピンには「不明な編集者」を設定
-        const pinsWithEditors = data.pins.map((pin: Pin) => {
-          if (!pin.editor_nickname) {
-            return {
-              ...pin,
-              editor_nickname: '不明な編集者'
-            };
-          }
-          return pin;
-        });
-        
-        setPins(pinsWithEditors);
-        
-        // 最初のエリアをアクティブに設定
-        if (data.floors && data.floors.length > 0) {
+        // 最初のフロアをアクティブに設定
+        if (data.floors.length > 0) {
           setActiveFloor(data.floors[0]);
         }
         
-        setError(null);
+        // ローカルストレージから編集者情報を取得
+        const storedEditor = localStorage.getItem(getEditorStorageKey(mapId));
+        if (storedEditor) {
+          const parsedEditor = JSON.parse(storedEditor) as PublicEditor;
+          
+          // 編集者情報を検証
+          try {
+            const verifyResult = await PublicEditAPI.verifyEditor(parsedEditor.id, parsedEditor.token);
+            if (verifyResult.verified) {
+              setEditor(parsedEditor);
+            } else {
+              // 検証失敗したらモーダルを表示
+              setShowNicknameModal(true);
+            }
+          } catch (error) {
+            console.error('編集者検証エラー:', error);
+            setShowNicknameModal(true);
+          }
+        } else {
+          // 保存された情報がなければモーダルを表示
+          setShowNicknameModal(true);
+        }
       } catch (error) {
-        console.error('データの取得エラー:', error);
-        setError(error instanceof Error ? error.message : 'データの取得に失敗しました');
+        console.error('データ取得エラー:', error);
+        setError(error instanceof Error ? error.message : 'マップの取得に失敗しました');
       } finally {
         setLoading(false);
       }
@@ -154,306 +100,190 @@ function PublicEditContent() {
     
     fetchData();
   }, [mapId]);
-
-  // 公開編集者の登録
+  
+  // 編集者登録
   const registerEditor = async () => {
-    if (!mapId || !nickName.trim()) {
-      return;
-    }
+    if (!nickname.trim() || !mapId) return;
+    
+    setIsSubmitting(true);
     
     try {
-      setLoading(true);
+      const newEditor = await PublicEditAPI.registerEditor(mapId, nickname);
       
-      const editor = await registerPublicEditor(mapId, nickName);
+      // 編集者情報をローカルストレージに保存
+      localStorage.setItem(getEditorStorageKey(mapId), JSON.stringify(newEditor));
       
-      if (editor) {
-        setEditorInfo(editor);
-        setShowNicknameModal(false);
-      } else {
-        throw new Error('編集者の登録に失敗しました');
-      }
+      setEditor(newEditor);
+      setShowNicknameModal(false);
     } catch (error) {
       setError(error instanceof Error ? error.message : '編集者の登録に失敗しました');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
-  };
-
-  // 次の階を前面に表示
-  const showNextFloor = () => {
-    if (floors.length === 0) return;
-    setFrontFloorIndex((prevIndex) => (prevIndex + 1) % floors.length);
   };
   
-  // 前の階を前面に表示
-  const showPrevFloor = () => {
-    if (floors.length === 0) return;
-    setFrontFloorIndex((prevIndex) => (prevIndex - 1 + floors.length) % floors.length);
-  };
-
-  // エリアの変更
-  const handleFloorChange = (floor: Floor) => {
-    setActiveFloor(floor);
-    
-    // 3Dビューの場合、フロントインデックスも更新
-    if (is3DView) {
-      const index = floors.findIndex(f => f.id === floor.id);
-      if (index !== -1) {
-        setFrontFloorIndex(index);
-      }
-    }
-  };
-
-  // 3D表示モードを切り替え
-  const toggle3DView = () => {
-    setIs3DView(!is3DView);
-    
-    // 3Dビューに切り替えるとき、現在のアクティブフロアがフロント表示されるようにする
-    if (!is3DView && activeFloor) {
-      const index = floors.findIndex(f => f.id === activeFloor.id);
-      if (index !== -1) {
-        setFrontFloorIndex(index);
-      }
-    }
-  };
-
-  // 写真上でクリックした位置にピンを追加するモードを切り替える
+  // ピン追加モードの切り替え
   const toggleAddPinMode = () => {
+    if (!editor) {
+      setShowNicknameModal(true);
+      return;
+    }
+    
     setIsAddingPin(!isAddingPin);
-    
-    // ピン追加モードを終了するときは選択状態をクリア
-    if (isAddingPin) {
-      setSelectedPinId(null);
-    }
   };
-
+  
   // 画像クリック時のピン追加処理
-  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>, exactPosition: { x: number, y: number } | null) => {
-    if (!isAddingPin || !editorInfo) return;
-    if (!exactPosition) {
-      // 通常のクリック位置計算（フォールバック）
-      const targetFloorId = activeFloor?.id;
-      if (!targetFloorId) return;
-      
-      // コンテナRef
-      const containerRef = normalViewRef.current ? normalViewRef : { current: e.currentTarget };
-      
-      // 正規化された位置情報を取得
-      const normalizedPosition = getExactImagePosition(e, containerRef as React.RefObject<HTMLElement>);
-      if (!normalizedPosition) return;
-      
-      // 位置情報を更新
-      setNewPinPosition(normalizedPosition);
-    } else {
-      // 正確な位置が指定されている場合はそれを使用
-      setNewPinPosition(exactPosition);
-    }
+  const handleImageClick = (x: number, y: number) => {
+    if (!isAddingPin || !activeFloor || !editor) return;
     
-    setNewPinInfo({ title: '', description: '' });
-    setIsFormOpen(true);
-  };
-
-  // 新しいピンの情報を保存
-  const savePin = async () => {
-    if (!activeFloor || !editorInfo || newPinInfo.title.trim() === '') return;
+    // 新しいピンの作成
+    const newPin: Partial<Pin> = {
+      floor_id: activeFloor.id,
+      title: '',
+      description: '',
+      x_position: x,
+      y_position: y,
+      editor_id: editor.id,
+      editor_nickname: editor.nickname
+    };
     
-    try {
-      // 一時的なピンをUIに追加（楽観的UI更新）
-      const tempId = `temp-${Date.now()}`;
-      const tempPin: Pin = {
-        id: tempId,
-        floor_id: activeFloor.id,
-        title: newPinInfo.title,
-        description: newPinInfo.description,
-        x_position: newPinPosition.x,
-        y_position: newPinPosition.y,
-        editor_id: editorInfo.id,
-        editor_nickname: editorInfo.nickname,
-        _temp: true
-      };
-      
-      setPins(prevPins => [...prevPins, tempPin]);
-      setNewPinInfo({ title: '', description: '' });
-      setIsFormOpen(false);
-      setIsAddingPin(false);
-      
-      // APIリクエスト
-      const result = await addPublicPin({
-        floorId: activeFloor.id,
-        title: newPinInfo.title,
-        description: newPinInfo.description,
-        x_position: newPinPosition.x,
-        y_position: newPinPosition.y,
-        editorId: editorInfo.id,
-        nickname: editorInfo.nickname
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'ピンの追加に失敗しました');
-      }
-
-      // 一時ピンを実際のピンに置き換え
-      setPins(prevPins => prevPins.filter(pin => !pin._temp).concat(result.pin));
-      
-      // 新しいピンを選択状態にする
-      setSelectedPinId(result.pin.id);
-      
-    } catch (error) {
-      // 一時ピンを削除（失敗時）
-      setPins(prevPins => prevPins.filter(pin => !pin._temp));
-      
-      setError(error instanceof Error ? error.message : 'ピンの追加に失敗しました');
-    }
+    setEditingPin(newPin as Pin);
+    setIsCreatingPin(true);
+    setShowPinEditorModal(true);
+    setIsAddingPin(false);
   };
-
-  // ピンをクリックしたときの処理
+  
+  // ピンのクリック処理
   const handlePinClick = (pin: Pin) => {
-    // 既に選択中のピンをクリックした場合は選択を解除
-    if (selectedPinId === pin.id) {
-      setSelectedPinId(null);
-    } else {
-      // 新しいピンを選択
-      setSelectedPinId(pin.id);
-      
-      // ピンがあるフロアをアクティブにする
-      const pinFloor = floors.find(floor => floor.id === pin.floor_id);
-      if (pinFloor) {
-        setActiveFloor(pinFloor);
-        
-        // 3Dビューの場合、フロントインデックスも更新
-        if (is3DView) {
-          const index = floors.findIndex(f => f.id === pinFloor.id);
-          if (index !== -1) {
-            setFrontFloorIndex(index);
-          }
-        }
-        
-        // 少し遅延してピンに視覚的にフォーカスを当てる
-        setTimeout(() => {
-          const pinElement = document.querySelector(`[data-pin-id="${pin.id}"]`);
-          if (pinElement) {
-            pinElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 300);
-      }
-    }
+    setSelectedPin(pin);
+    setShowPinDetailModal(true);
   };
-
-  // グローバルな pinClick イベントを処理
-  useEffect(() => {
-    const handleGlobalPinClick = (e: Event) => {
-      const customEvent = e as CustomEvent<Pin>;
-      if (customEvent.detail) {
-        // ピンクリックイベントを処理
-        handlePinClick(customEvent.detail);
-      }
-    };
-    
-    window.addEventListener('pinClick', handleGlobalPinClick);
-    
-    return () => {
-      window.removeEventListener('pinClick', handleGlobalPinClick);
-    };
-  }, [selectedPinId, floors, is3DView]); // 依存配列を更新
-
-  // ピン一覧からピンをクリックしたときの処理
-  const handlePinListClick = (pin: Pin) => {
-    handlePinClick(pin);
-  };
-
-  // ピンの編集を開始
+  
+  // ピンの編集
   const handleEditPin = (pin: Pin) => {
-    // 自分が作成したピンのみ編集可能
-    if (editorInfo && pin.editor_id === editorInfo.id) {
-      setEditingPin(pin);
-      setIsEditModalOpen(true);
+    if (!editor) {
+      setShowNicknameModal(true);
+      return;
     }
+    
+    // 自分のピンかどうかチェック
+    if (pin.editor_id !== editor.id) {
+      setError('他のユーザーが作成したピンは編集できません');
+      return;
+    }
+    
+    setEditingPin(pin);
+    setIsCreatingPin(false);
+    setShowPinEditorModal(true);
   };
-
-  // ピンの更新
-  const updatePin = async (updatedPin: Pin) => {
-    if (!editorInfo) return;
+  
+  // ピンの削除
+  const handleDeletePin = (pin: Pin) => {
+    if (!editor) {
+      setShowNicknameModal(true);
+      return;
+    }
+    
+    // 自分のピンかどうかチェック
+    if (pin.editor_id !== editor.id) {
+      setError('他のユーザーが作成したピンは削除できません');
+      return;
+    }
+    
+    setPinToDelete(pin);
+    setShowDeleteModal(true);
+  };
+  
+  // ピンの保存
+  const handleSavePin = async (pin: Pin) => {
+    if (!editor || !viewerData) return;
+    
+    setIsSubmitting(true);
     
     try {
-      const result = await updatePublicPin({
-        pinId: updatedPin.id,
-        title: updatedPin.title,
-        description: updatedPin.description,
-        editorId: editorInfo.id
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'ピンの更新に失敗しました');
+      if (isCreatingPin) {
+        // 新規作成
+        const newPin = await PublicEditAPI.createPin({
+          floorId: pin.floor_id,
+          title: pin.title,
+          description: pin.description,
+          x_position: pin.x_position,
+          y_position: pin.y_position,
+          editorId: editor.id,
+          editorNickname: editor.nickname,
+          image_url: pin.image_url
+        });
+        
+        // ピンを追加
+        setViewerData({
+          ...viewerData,
+          pins: [...viewerData.pins, newPin]
+        });
+      } else {
+        // 更新
+        const updatedPin = await PublicEditAPI.updatePin(pin.id, {
+          title: pin.title,
+          description: pin.description,
+          editorId: editor.id
+        });
+        
+        // ピンを更新
+        setViewerData({
+          ...viewerData,
+          pins: viewerData.pins.map(p => p.id === pin.id ? updatedPin : p)
+        });
       }
       
-      // ピンリストを更新
-      setPins(pins.map(pin => pin.id === result.pin.id ? result.pin : pin));
+      setShowPinEditorModal(false);
+      setEditingPin(null);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'ピンの保存に失敗しました');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // ピンの削除確認
+  const confirmDeletePin = async () => {
+    if (!editor || !pinToDelete || !viewerData) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      await PublicEditAPI.deletePin(pinToDelete.id, editor.id);
+      
+      // ピンを削除
+      setViewerData({
+        ...viewerData,
+        pins: viewerData.pins.filter(p => p.id !== pinToDelete.id)
+      });
       
       // モーダルを閉じる
-      setIsEditModalOpen(false);
-      
+      setShowDeleteModal(false);
+      setPinToDelete(null);
+      setShowPinDetailModal(false);
+      setSelectedPin(null);
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'ピンの更新に失敗しました');
-    }
-  };
-
-  // ピンの削除
-  const deletePin = async (pin: Pin) => {
-    if (!editorInfo) return;
-    
-    try {
-      // 自分が作成したピンのみ削除可能
-      if (pin.editor_id !== editorInfo.id) {
-        throw new Error('このピンを削除する権限がありません');
-      }
-      
-      // UIから先に削除（楽観的UI更新）
-      setPins(prevPins => prevPins.filter(p => p.id !== pin.id));
-      
-      // 選択中のピンだった場合は選択を解除
-      if (selectedPinId === pin.id) {
-        setSelectedPinId(null);
-      }
-      
-      // APIリクエスト
-      const result = await deletePublicPin({
-        pinId: pin.id,
-        editorId: editorInfo.id
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'ピンの削除に失敗しました');
-      }
-      
-    } catch (error) {
-      // エラー時のメッセージ表示
       setError(error instanceof Error ? error.message : 'ピンの削除に失敗しました');
+    } finally {
+      setIsSubmitting(false);
     }
   };
-
-
-if (loading) {
+  
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingIndicator
-          message="読み込み中..."
-          isFullScreen={false}
-        />
+        <Loading />
       </div>
     );
   }
-
-  if (error || !mapData) {
+  
+  if (error || !viewerData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center max-w-md p-6 bg-white rounded-lg shadow-md">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h2 className="text-xl font-semibold mb-2">エラー</h2>
-          <p className="text-gray-600 mb-4">
-            {error || 'マップが見つかりません。'}
-          </p>
+      <div className="container mx-auto p-6">
+        <div className="bg-white shadow-md rounded-lg p-6 max-w-md mx-auto">
+          <h2 className="text-xl font-semibold mb-4 text-red-600">エラー</h2>
+          <p className="mb-4 text-gray-700">{error || 'マップデータの取得に失敗しました'}</p>
           <Link href="/" className="text-blue-500 hover:underline">
             トップページに戻る
           </Link>
@@ -461,375 +291,243 @@ if (loading) {
       </div>
     );
   }
-
+  
+  const { map, floors, pins } = viewerData;
+  
   return (
-    <main className="min-h-screen p-4 md:p-8 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">{mapData.title}</h1>
-            {mapData.description && (
-              <p className="text-gray-600">{mapData.description}</p>
-            )}
-          </div>
-          <div className="flex justify-between flex-wrap gap-2">
-            {editorInfo ? (
-              <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {editorInfo.nickname}で編集中
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowNicknameModal(true)}
-                className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm"
-              >
-                ニックネーム設定
-              </button>
-            )}
-            
-            <Link
-              href={`/viewer?id=${mapId}`}
-              className="bg-indigo-500 text-white px-3 py-1 rounded-md text-sm flex items-center"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              閲覧モード
-            </Link>
-          </div>
+    <div className="container mx-auto p-6">
+      <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{map.title}</h1>
+          {map.description && <p className="text-gray-600 mt-1">{map.description}</p>}
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* 左側のコントロールパネル */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">フロア選択</h2>
-              
-              {/* エリア選択 */}
-              <div className="mb-6">
-                {floors.length > 0 ? (
-                  <div className="space-y-2">
-                    {floors.map((floor) => (
-                      <div 
-                        key={floor.id}
-                        className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
-                          activeFloor?.id === floor.id 
-                            ? 'bg-blue-100 border-l-4 border-blue-500' 
-                            : 'bg-gray-50 hover:bg-gray-100'
-                        }`}
-                        onClick={() => handleFloorChange(floor)}
-                      >
-                        <div className="mr-3">
-                          <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                            {floor.floor_number}
-                          </div>
-                        </div>
-                        <span>{floor.name}</span>
-                        
-                        {floor.image_url && (
-                          <div className="ml-auto">
-                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          </div>
-                        )}
+        <div className="flex flex-wrap gap-2">
+          {editor ? (
+            <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+              {editor.nickname}で編集中
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowNicknameModal(true)}
+              className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm"
+            >
+              ニックネーム設定
+            </button>
+          )}
+          
+          <Link
+            href={`/viewer/${mapId}`}
+            className="bg-indigo-500 text-white px-3 py-1 rounded-md text-sm flex items-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+              <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+            </svg>
+            閲覧モード
+          </Link>
+        </div>
+      </div>
+      
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4">
+          {error}
+        </div>
+      )}
+      
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* サイドバー */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+            <h2 className="font-semibold text-lg mb-3">エリア選択</h2>
+            
+            <div className="space-y-2">
+              {floors.map((floor) => (
+                <div
+                  key={floor.id}
+                  className={`p-3 rounded-lg border cursor-pointer ${
+                    activeFloor?.id === floor.id
+                      ? 'border-blue-300 bg-blue-50'
+                      : 'border-gray-200 hover:bg-gray-50'
+                  }`}
+                  onClick={() => setActiveFloor(floor)}
+                >
+                  <div className="flex items-center">
+                    <div className="mr-3">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                        {floor.floor_number}
                       </div>
-                    ))}
+                    </div>
+                    <span className="font-medium">{floor.name}</span>
                   </div>
-                ) : (
-                  <div className="text-gray-500 text-center py-4">
-                    エリア情報がありません
-                  </div>
-                )}
-              </div>
-              
-              {/* アクションボタン */}
-              <div className="space-y-3">
-                {editorInfo && (
-                  <button
-                    onClick={toggleAddPinMode}
-                    className={`w-full px-4 py-2 rounded-md transition-colors ${
-                      isAddingPin 
-                      ? 'bg-red-500 hover:bg-red-600 text-white' 
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                    disabled={!activeFloor || !activeFloor.image_url}
-                  >
-                    {isAddingPin ? 'ピン追加モードを終了' : 'ピンを追加'}
-                  </button>
-                )}
-                
-                <button
-                  onClick={toggle3DView}
-                  className={`w-full px-4 py-2 rounded-md transition-colors ${
-                    is3DView 
-                    ? 'bg-purple-500 hover:bg-purple-600 text-white' 
-                    : 'bg-gray-500 hover:bg-gray-600 text-white'
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={toggleAddPinMode}
+                className={`w-full px-3 py-2 rounded-md transition-colors text-sm mb-3 ${
+                  isAddingPin
+                    ? 'bg-red-500 hover:bg-red-600 text-white'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
                 }`}
-                disabled={floors.length <= 1}
+                disabled={!activeFloor?.image_url}
               >
-                {is3DView ? '通常表示に戻す' : '3D表示にする(ベータ版)'}
+                {isAddingPin ? 'ピン追加をキャンセル' : 'ピンを追加'}
+              </button>
+              
+              <button
+                onClick={() => setShowBookmarks(!showBookmarks)}
+                className="w-full px-3 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm"
+              >
+                {showBookmarks ? 'しおり一覧を隠す' : 'しおり一覧を表示'}
               </button>
             </div>
           </div>
           
+          {/* しおり一覧 */}
+          {showBookmarks && (
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <h2 className="font-semibold text-lg mb-3">しおり一覧</h2>
+              
+              <BookmarkList
+                pins={pins}
+                floors={floors}
+                activeFloorId={activeFloor?.id}
+                onPinClick={handlePinClick}
+                selectedPinId={selectedPin?.id}
+              />
+            </div>
+          )}
         </div>
         
-        {/* 右側の表示エリア */}
+        {/* メインコンテンツ */}
         <div className="lg:col-span-3">
-          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-            <h2 className="text-lg font-semibold mb-4 text-gray-700">
-              {is3DView ? '3D表示(ベータ版)' : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
-            </h2>
-            
-            <div 
-              ref={containerRef}
-              className="relative bg-gray-100 rounded-lg overflow-hidden"
-            >
-              {is3DView ? (
-                <div className="w-full h-96 relative">
-                  <ImprovedView3D 
-                    floors={floors}
-                    pins={[]} // ピン表示はカスタムコンポーネントで行う
-                    frontFloorIndex={frontFloorIndex}
-                    showArrows={showModalArrows}
-                    onPrevFloor={showPrevFloor}
-                    onNextFloor={showNextFloor}
-                    onImageClick={(e, floorId) => {
-                      // 3Dビューでの画像クリック時の処理
-                      const currentFloor = floors.find(f => f.id === floorId);
-                      if (currentFloor && isAddingPin && e.nativeEvent) {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const x = ((e.clientX - rect.left) / rect.width) * 100;
-                        const y = ((e.clientY - rect.top) / rect.height) * 100;
-                        setNewPinPosition({ x, y });
-                        setNewPinInfo({ title: '', description: '' });
-                        setIsFormOpen(true);
-                      }
-                    }}
-                  />
-                  
-                  {/* 各エリアのピンを表示 */}
-                  {pins.map((pin) => (
-                    <EnhancedPinViewer
-                      key={pin.id}
-                      pin={pin}
-                      floors={floors}
-                      containerRef={containerRef}
-                      is3DView={true}
-                      isPublicEdit={true}
-                      currentEditorId={editorInfo?.id || null}
-                      isSelected={selectedPinId === pin.id}
-                      onEditPin={handleEditPin}
-                      onDeletePin={deletePin}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div 
-                  ref={normalViewRef} 
-                  className="w-full h-96 relative"
-                >
-                  <NormalView
-                    floor={activeFloor}
-                    pins={[]} // ピン表示はカスタムコンポーネントで行う
-                    onImageClick={handleImageClick}
-                  />
-                  
-                  {/* 現在のエリアのピンのみを表示 */}
-                  {activeFloor && pins
-                    .filter(pin => pin.floor_id === activeFloor.id)
-                    .map((pin) => (
-                      <EnhancedPinViewer
-                        key={pin.id}
-                        pin={pin}
-                        floors={floors}
-                        containerRef={normalViewRef}
-                        is3DView={false}
-                        isPublicEdit={true}
-                        currentEditorId={editorInfo?.id || null}
-                        isSelected={selectedPinId === pin.id}
-                        onEditPin={handleEditPin}
-                        onDeletePin={deletePin}
-                      />
-                    ))}
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-semibold text-lg">
+                {activeFloor ? activeFloor.name : 'エリアがありません'}
+              </h2>
+              
+              {activeFloor && (
+                <div className="text-sm text-gray-500">
+                  {isAddingPin ? (
+                    <span className="text-red-500">画像をクリックしてピンを追加してください</span>
+                  ) : (
+                    <span>ピンをクリックすると詳細が表示されます</span>
+                  )}
                 </div>
               )}
             </div>
-        {/* ピン一覧 */}
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <h2 className="text-lg font-semibold mb-4 text-gray-700">ピン一覧</h2>
-            <PinList 
-              pins={pins} 
-              floors={floors}
-              activeFloor={activeFloor?.id || null} 
-              onPinClick={handlePinListClick}
-              is3DView={is3DView}
-              selectedPinId={selectedPinId}
-            />
-          </div>
+            
+            {/* マップビューワー */}
+            {activeFloor && (
+              <MapViewer
+                floor={activeFloor}
+                pins={pins.filter(pin => pin.floor_id === activeFloor.id)}
+                isAddingPin={isAddingPin}
+                isEditable={true}
+                selectedPinId={selectedPin?.id}
+                onPinClick={handlePinClick}
+                onEditPin={handleEditPin}
+                onDeletePin={handleDeletePin}
+                onImageClick={handleImageClick}
+                zoomable={true}
+              />
+            )}
           </div>
         </div>
       </div>
-    </div>
-    
-    {/* ニックネーム入力モーダル */}
-    <ImprovedModal
-      isOpen={showNicknameModal}
-      onClose={() => {
-        if (editorInfo) {
-          setShowNicknameModal(false);
-        }
-      }}
-      title="ニックネームを設定"
-      size="sm"
-    >
-      <div className="p-4">
-        <p className="mb-4 text-gray-600">
-          このマップを編集するために、ニックネームを設定してください。
-        </p>
-        <div className="mb-4">
-          <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
-            ニックネーム
-          </label>
-          <input
-            type="text"
-            id="nickname"
-            value={nickName}
-            onChange={(e) => setNickName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            placeholder="例：山田太郎"
-            required
-          />
-        </div>
-        <button
-          onClick={registerEditor}
-          disabled={!nickName.trim() || loading}
-          className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed"
-        >
-          {loading ? '処理中...' : '編集を始める'}
-        </button>
-      </div>
-    </ImprovedModal>
-    
-    {/* ピン情報入力モーダル */}
-    <ImprovedModal
-      isOpen={isFormOpen}
-      onClose={() => {
-        setIsFormOpen(false);
-        setIsAddingPin(false);
-      }}
-      title="ピン情報を入力"
-      size="md"
-    >
-      <div className="mb-4">
-        <label className="block text-gray-700 mb-2">タイトル</label>
-        <input
-          type="text"
-          value={newPinInfo.title}
-          onChange={(e) => setNewPinInfo({ ...newPinInfo, title: e.target.value })}
-          className="w-full p-2 border rounded-md"
-          placeholder="タイトルを入力"
-        />
-      </div>
-      <div className="mb-6">
-        <label className="block text-gray-700 mb-2">説明</label>
-        <textarea
-          value={newPinInfo.description}
-          onChange={(e) => setNewPinInfo({ ...newPinInfo, description: e.target.value })}
-          className="w-full p-2 border rounded-md h-32"
-          placeholder="説明を入力"
-        />
-      </div>
-      <div className="flex justify-end space-x-2">
-        <button
-          onClick={() => {
-            setIsFormOpen(false);
-            setIsAddingPin(false);
-          }}
-          className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100"
-        >
-          キャンセル
-        </button>
-        <button
-          onClick={savePin}
-          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          disabled={!newPinInfo.title.trim()}
-        >
-          保存
-        </button>
-      </div>
-    </ImprovedModal>
-    
-    {/* ピン編集モーダル */}
-    <ImprovedModal
-      isOpen={isEditModalOpen}
-      onClose={() => {
-        setIsEditModalOpen(false);
-        setEditingPin(null);
-      }}
-      title="ピン情報を編集"
-      size="md"
-    >
-      {editingPin && (
-        <div>
-          <div className="mb-4">
-            <label className="block text-gray-700 mb-2">タイトル</label>
+      
+      {/* ニックネーム設定モーダル */}
+      <Modal
+        isOpen={showNicknameModal}
+        onClose={() => {
+          if (!editor && !isSubmitting) {
+            // 編集者登録されていなければページ遷移
+            router.push(`/viewer/${mapId}`);
+          } else {
+            setShowNicknameModal(false);
+          }
+        }}
+        title="ニックネームを設定"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            このマップを編集するには、ニックネームの設定が必要です。
+          </p>
+          
+          <div>
+            <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
+              ニックネーム
+            </label>
             <input
               type="text"
-              value={editingPin.title}
-              onChange={(e) => setEditingPin({ ...editingPin, title: e.target.value })}
-              className="w-full p-2 border rounded-md"
-              placeholder="タイトルを入力"
+              id="nickname"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="あなたの名前を入力"
+              disabled={isSubmitting}
             />
           </div>
-          <div className="mb-6">
-            <label className="block text-gray-700 mb-2">説明</label>
-            <textarea
-              value={editingPin.description}
-              onChange={(e) => setEditingPin({ ...editingPin, description: e.target.value })}
-              className="w-full p-2 border rounded-md h-32"
-              placeholder="説明を入力"
-            />
-          </div>
-          <div className="flex justify-end space-x-2">
+          
+          <div className="pt-2">
             <button
-              onClick={() => {
-                setIsEditModalOpen(false);
-                setEditingPin(null);
-              }}
-              className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-100"
+              onClick={registerEditor}
+              className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed"
+              disabled={!nickname.trim() || isSubmitting}
             >
-              キャンセル
-            </button>
-            <button
-              onClick={() => updatePin(editingPin)}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              disabled={!editingPin.title.trim()}
-            >
-              保存
+              {isSubmitting ? '登録中...' : 'はじめる'}
             </button>
           </div>
         </div>
-      )}
-    </ImprovedModal>
-    </main>
-  );
-}
-
-// メインコンポーネントをSuspenseでラップ
-export default function PublicEditPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingIndicator
-          message="読み込み中..."
-          isFullScreen={false}
-        />
-      </div>
-    }>
-      <PublicEditContent />
-    </Suspense>
+      </Modal>
+      
+      {/* ピン詳細モーダル */}
+      <PinDetailModal
+        pin={selectedPin}
+        floors={floors}
+        isOpen={showPinDetailModal}
+        isEditable={editor ? selectedPin?.editor_id === editor.id : false}
+        onClose={() => setShowPinDetailModal(false)}
+        onEdit={handleEditPin}
+        onDelete={handleDeletePin}
+      />
+      
+      {/* ピン編集モーダル */}
+      <PinEditorModal
+        pin={editingPin}
+        isOpen={showPinEditorModal}
+        isCreating={isCreatingPin}
+        token={editor?.token || ''}
+        onClose={() => {
+          setShowPinEditorModal(false);
+          setEditingPin(null);
+        }}
+        onSave={handleSavePin}
+      />
+      
+      {/* 削除確認モーダル */}
+      <DeleteConfirmationModal
+        isOpen={showDeleteModal}
+        title="ピンの削除"
+        message="このピンを削除してもよろしいですか？この操作は元に戻せません。"
+        itemName={pinToDelete?.title}
+        isDeleting={isSubmitting}
+        onClose={() => {
+          if (!isSubmitting) {
+            setShowDeleteModal(false);
+            setPinToDelete(null);
+          }
+        }}
+        onConfirm={confirmDeletePin}
+      />
+    </div>
   );
 }

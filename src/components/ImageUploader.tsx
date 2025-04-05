@@ -1,23 +1,30 @@
 // components/ImageUploader.tsx
-import React, { useState, useRef } from 'react';
+'use client';
+
+import { useState, useRef } from 'react';
+import { uploadImage } from '@/lib/cloudinary';
 
 interface ImageUploaderProps {
-  floorId: string;
-  onUploadComplete: (imageUrl: string) => void;
-  onUploadError: (error: string) => void;
+  onUploadComplete: (imageUrl: string, publicId: string) => void;
+  onUploadError?: (error: string) => void;
   currentImageUrl?: string | null;
+  token: string;
+  folder?: string;
   buttonText?: string;
   className?: string;
+  allowedTypes?: string[];
 }
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({
-  floorId,
+export default function ImageUploader({
   onUploadComplete,
   onUploadError,
   currentImageUrl = null,
-  buttonText = "画像をアップロード",
-  className = ""
-}) => {
+  token,
+  folder = 'map_images',
+  buttonText = '画像をアップロード',
+  className = '',
+  allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+}: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,101 +36,77 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
     const file = e.target.files[0];
     
-    // 画像ファイルかどうかの確認
-    if (!file.type.startsWith('image/')) {
-      onUploadError('画像ファイルを選択してください');
+    // ファイルタイプのチェック
+    if (!allowedTypes.includes(file.type)) {
+      if (onUploadError) {
+        onUploadError(`許可されていないファイル形式です。${allowedTypes.join(', ')}のみ対応しています。`);
+      }
       return;
     }
     
-    // アップロード処理の開始
+    // ファイルサイズのチェック (10MB制限)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      if (onUploadError) {
+        onUploadError('ファイルサイズは10MB以下にしてください。');
+      }
+      return;
+    }
+    
+    // アップロード開始
     setIsUploading(true);
-    setUploadProgress(0);
+    setUploadProgress(10);
     
     try {
-      // FormDataの作成
-      const formData = new FormData();
-      formData.append('image', file);
+      // 進捗状況の更新
+      const updateProgress = (progress: number) => {
+        setUploadProgress(progress);
+      };
       
-      // XHRを使用して進捗を取得
-      const xhr = new XMLHttpRequest();
-      
-      // アップロード進捗の監視
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(progress);
-        }
+      // Cloudinaryへアップロード
+      const result = await uploadImage({
+        file,
+        folder,
+        onProgress: updateProgress,
+        token
       });
       
-      // レスポンス処理
-      xhr.onload = async () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            onUploadComplete(response.image_url);
-          } catch (error) {
-            console.error('レスポース解析エラー:', error);
-            onUploadError('アップロード結果の処理に失敗しました');
-          }
-        } else {
-          let errorMessage = '画像のアップロードに失敗しました';
-          try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            if (errorResponse.error) {
-              errorMessage = errorResponse.error;
-            }
-          } catch (e) {
-            // エラーレスポンスのパースに失敗した場合は無視
-          }
-          onUploadError(errorMessage);
-        }
-        setIsUploading(false);
-        setUploadProgress(0);
-        
-        // ファイル入力をリセット
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      };
-      
-      // エラー処理
-      xhr.onerror = () => {
-        onUploadError('ネットワークエラーが発生しました');
-        setIsUploading(false);
-        setUploadProgress(0);
-        
-        // ファイル入力をリセット
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      };
-      
-      // リクエストの送信
-      xhr.open('POST', `/api/floors/${floorId}/image`, true);
-      xhr.send(formData);
-      
+      // アップロード完了
+      setUploadProgress(100);
+      if (onUploadComplete) {
+        onUploadComplete(result.url, result.publicId);
+      }
     } catch (error) {
-      console.error('アップロードエラー:', error);
-      onUploadError('画像のアップロード中にエラーが発生しました');
+      // エラー処理
+      if (onUploadError) {
+        onUploadError(error instanceof Error ? error.message : '画像のアップロードに失敗しました');
+      }
+    } finally {
       setIsUploading(false);
-      setUploadProgress(0);
+      
+      // 入力をリセット
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   return (
     <div className={className}>
+      {/* 非表示の入力要素 */}
       <input
         title="画像アップロード"
-        placeholder="画像アップロード"
+        placeholder="画像を選択"
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={allowedTypes.join(',')}
         className="hidden"
         onChange={handleFileChange}
         disabled={isUploading}
       />
       
       {isUploading ? (
+        // アップロード中の表示
         <div className="w-full">
           <div className="flex items-center justify-between mb-1">
             <span className="text-sm font-medium text-gray-700">アップロード中...</span>
@@ -137,6 +120,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
           </div>
         </div>
       ) : (
+        // アップロードボタン
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
@@ -146,11 +130,31 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
               : 'bg-blue-500 text-white hover:bg-blue-600'
           }`}
         >
-          {currentImageUrl ? '変更' : buttonText}
+          {currentImageUrl ? '画像を変更' : buttonText}
         </button>
+      )}
+      
+      {/* 現在の画像のプレビュー */}
+      {currentImageUrl && !isUploading && (
+        <div className="mt-2">
+          <div className="relative group">
+            <img 
+              src={currentImageUrl} 
+              alt="アップロードされた画像" 
+              className="w-full h-32 object-cover rounded-md"
+            />
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-md">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2 py-1 bg-white text-gray-800 rounded text-xs"
+              >
+                変更
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
-};
-
-export default ImageUploader;
+}

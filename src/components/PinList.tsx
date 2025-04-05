@@ -7,7 +7,6 @@ interface PinListProps {
   floors: Floor[];
   activeFloor: string | null;
   onPinClick: (pin: Pin) => void;
-  is3DView: boolean;
   selectedPinId?: string | null; // 選択中のピンIDを追加
 }
 
@@ -16,7 +15,6 @@ const PinList: React.FC<PinListProps> = ({
   floors, 
   activeFloor, 
   onPinClick, 
-  is3DView,
   selectedPinId = null // デフォルトは選択なし
 }) => {
   // 表示するテキストを切り詰める関数
@@ -26,16 +24,14 @@ const PinList: React.FC<PinListProps> = ({
   };
 
   // エリア別にピンをフィルタリング
-  const filteredPins = is3DView 
-    ? pins 
-    : pins.filter(pin => pin.floor_id === activeFloor);
+  const filteredPins = pins.filter(pin => pin.floor_id === activeFloor);
 
   // 表示するピンがない場合のメッセージ
   if (filteredPins.length === 0) {
     return (
       <div>
         <h3 className="text-sm font-medium mb-2 text-gray-600">
-          {is3DView ? '全てのポイント' : `${floors.find(f => f.id === activeFloor)?.name || ''}のポイント`}
+          {`${floors.find(f => f.id === activeFloor)?.name || ''}のポイント`}
         </h3>
         <div className="text-center text-gray-500 py-4">
           ポイントがありません
@@ -47,7 +43,7 @@ const PinList: React.FC<PinListProps> = ({
   return (
     <div>
       <h3 className="text-sm font-medium mb-2 text-gray-600">
-        {is3DView ? '全てのポイント' : `${floors.find(f => f.id === activeFloor)?.name || ''}のポイント`}
+        {`${floors.find(f => f.id === activeFloor)?.name || ''}のポイント`}
       </h3>
       
       <div className="max-h-96 overflow-y-auto">
@@ -93,7 +89,7 @@ const PinList: React.FC<PinListProps> = ({
                     {pin.editor_nickname || "不明な編集者"}
                   </p>
                 </div>
-                {is3DView && pinFloor && (
+                {pinFloor && (
                   <div className="ml-1 text-xs text-gray-500 flex-shrink-0 pt-1 whitespace-nowrap">
                     {pinFloor.name}
                   </div>

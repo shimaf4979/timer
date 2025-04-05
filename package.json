@@ -18,6 +18,8 @@
     "@types/noble": "^0.0.44",
     "bcrypt": "^5.1.1",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.6.0",
+    "cloudinary-core": "^2.13.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.5.0",
     "lucide-react": "^0.479.0",

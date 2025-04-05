@@ -1,0 +1,47 @@
+@baseUrl = https://api.pamfree.com/api
+@token =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiZGY3MTFjM2MtYzUwOC00ODU2LTk1ZjktN2QzZGMyZGM5MTJkIiwiZW1haWwiOiJzaGltYXl1dTM0MTJAZ21haWwuY29tIiwicm9sZSI6InVzZXIiLCJleHAiOjE3NDM3ODUyNzgsImlhdCI6MTc0MzY5ODg3OH0.Biv1EssDfkI_DAUIX4fdI9EOLpj3V7L0gM74TslbRXo
+@id = 2de385b8-1b64-4dc3-9fec-88749ced7e2f
+@map_id = test1
+
+### health check
+GET {{baseUrl}}/health
+
+### 登録
+
+### 認証
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "test@test.com",
+    "password": "Yamamoto3412"
+}
+
+### 認証(shimayuu)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "shimayuu3412@gmail.com",
+    "password": "Yamamoto3412"
+}
+
+### マップ一覧取得
+GET {{baseUrl}}/maps
+Authorization: Bearer {{token}}
+
+### フロア一覧取得-id
+GET {{baseUrl}}/maps/{{id}}/floors
+Authorization: Bearer {{token}}
+
+### フロア作成
+POST {{baseUrl}}/maps/{{id}}/floors
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"floor_number":1,"name":"テスト"}
+
+### ピン一覧取得
+GET {{baseUrl}}/pins/{{id}}
+Authorization: Bearer {{token}}
+
