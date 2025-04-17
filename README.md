@@ -69,8 +69,6 @@ faviconを変更しました。PamfreeのPがiconになっています。
 ```
 48 directories, 46 files
 
-llStack/NewNext/timer $ cd src/app/
-shimamurayuudai@shimamurayuudainoMacBook-Air ~/Documents/FullStack/NewNext/timer/src/app $ tree
 .
 ├── account
 │   └── page.tsx
