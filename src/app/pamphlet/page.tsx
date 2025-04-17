@@ -2,12 +2,12 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapData, Floor, Pin } from '@/types/map-types';
 
-export default function PamphletPage() {
+function PamphletContent() {
   const searchParams = useSearchParams();
   const mapId = searchParams.get('id') || '';
   const floorId = searchParams.get('floor') || '';
@@ -613,5 +613,23 @@ export default function PamphletPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+// メインのコンポーネント
+export default function PamphletPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">読み込み中...</p>
+          </div>
+        </div>
+      }
+    >
+      <PamphletContent />
+    </Suspense>
   );
 }
