@@ -156,29 +156,11 @@ function PamphletContent() {
   return (
     <div ref={containerRef} className="bg-white min-h-screen">
       {/* 画面表示用のヘッダー（印刷時には非表示） */}
-      <header className="print:hidden py-4 px-6 mt-2 flex justify-center items-center">
+      <header className="print:hidden text-white py-8 px-6 flex justify-center items-center">
         <div className="flex gap-3">
-          <Link
-            href={`/viewer?id=${mapId}`}
-            className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 flex items-center"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-                clipRule="evenodd"
-              />
-            </svg>
-            戻る
-          </Link>
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 flex items-center"
+            className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-50 flex items-center"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -194,6 +176,24 @@ function PamphletContent() {
             </svg>
             印刷する
           </button>
+          <Link
+            href={`/viewer?id=${mapId}`}
+            className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-800 flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+            戻る
+          </Link>
         </div>
       </header>
 
@@ -413,7 +413,7 @@ function PamphletContent() {
                                       top: `${y}%`,
                                       width: '20px',
                                       height: '20px',
-                                      backgroundColor: '#000',
+                                      backgroundColor: '#3b82f6',
                                       color: '#fff',
                                       borderRadius: '50%',
                                       display: 'flex',
@@ -467,72 +467,65 @@ function PamphletContent() {
                 </h2>
               </div>
 
-              <div className="print:flex-grow print:overflow-auto print:border print:border-gray-200 print:rounded-lg print:p-1 print:shadow-sm print:flex-grow-container">
-                {/* ピンの数に応じて最適なグリッドレイアウトを選択 */}
+              <div className="print:flex-grow print:overflow-auto print:border print:border-gray-200 print:rounded-lg print:p-3 print:shadow-sm print:max-h-[calc(100vh-10rem)]">
+                {/* ピンの数に応じて列数、フォントサイズ、余白を動的に調整 */}
                 <div
                   className={`
-    print:grid print:h-full print:w-full print:gap-1
+    print:grid print:gap-2 print:auto-rows-min
     ${
       sortedPins.length <= 4
-        ? 'print:grid-cols-1 print:grid-rows-' + sortedPins.length
-        : sortedPins.length <= 6
-          ? 'print:grid-cols-2 print:grid-rows-3'
-          : sortedPins.length <= 8
-            ? 'print:grid-cols-2 print:grid-rows-4'
-            : sortedPins.length <= 9
-              ? 'print:grid-cols-3 print:grid-rows-3'
-              : sortedPins.length <= 12
-                ? 'print:grid-cols-3 print:grid-rows-4'
-                : sortedPins.length <= 15
-                  ? 'print:grid-cols-3 print:grid-rows-5'
-                  : 'print:grid-cols-3 print:grid-rows-6'
+        ? 'print:grid-cols-1'
+        : sortedPins.length <= 8
+          ? 'print:grid-cols-2'
+          : sortedPins.length <= 12
+            ? 'print:grid-cols-2'
+            : 'print:grid-cols-3'
     }
     `}
                 >
                   {sortedPins.map((pin, index) => (
                     <div
                       key={pin.id}
-                      className="print:bg-white print:rounded print:border print:border-gray-200 print:overflow-hidden print:break-inside-avoid print:shadow-sm print:flex print:flex-col print:h-full"
+                      className="print:bg-white print:rounded-lg print:overflow-hidden print:break-inside-avoid print:shadow-md print:border print:border-gray-200 print:flex print:flex-col print:h-auto print:min-h-0"
                     >
                       <div
                         className={`
-          print:border-b print:border-gray-100 print:bg-gradient-to-r print:from-sky-50 print:to-white 
+          print:bg-gradient-to-r print:from-sky-100 print:to-blue-50
+          print:border-b print:border-gray-200
           print:flex print:items-center
           ${
             sortedPins.length <= 8
-              ? 'print:card-header-lg'
+              ? 'print:p-3'
               : sortedPins.length <= 15
-                ? 'print:card-header-md'
-                : 'print:card-header-sm'
+                ? 'print:p-2'
+                : 'print:p-1.5'
           }
         `}
                       >
-                        <div className="print:w-4 print:h-4 print:flex print:items-center print:justify-center print:bg-black print:rounded-full print:text-white print:mr-1 print:flex-shrink-0">
-                          <span
-                            className={`print:font-bold ${
-                              sortedPins.length > 18 ? 'print:text-[6px]' : 'print:text-xs'
-                            }`}
-                          >
-                            {index + 1}
-                          </span>
+                        <div className="print:font-bold print:text-sky-800 print:text-xl print:mr-2">
+                          {index + 1}
                         </div>
-                        <div className="print:flex-grow print:truncate">
+                        <div className="print:flex-grow">
                           <h3
-                            className={`print:font-medium print:text-gray-800 ${
-                              sortedPins.length <= 8
-                                ? 'print:text-sm'
-                                : sortedPins.length <= 15
-                                  ? 'print:text-xs'
-                                  : 'print:text-[8px]'
-                            } print:truncate`}
+                            className={`
+              print:font-bold print:text-gray-800 
+              ${
+                sortedPins.length <= 8
+                  ? 'print:text-base'
+                  : sortedPins.length <= 15
+                    ? 'print:text-sm'
+                    : 'print:text-xs'
+              }
+            `}
                           >
                             {pin.title}
                           </h3>
                           {pin.editor_nickname && sortedPins.length <= 15 && (
                             <span
-                              className={`print:text-gray-500 ${
-                                sortedPins.length > 12 ? 'print:text-[6px]' : 'print:text-xs'
-                              }`}
+                              className={`
+                print:text-gray-500
+                ${sortedPins.length > 12 ? 'print:text-[8px]' : 'print:text-xs'}
+              `}
                             >
                               作成者: {pin.editor_nickname}
                             </span>
@@ -541,27 +534,35 @@ function PamphletContent() {
                       </div>
                       <div
                         className={`
-          print:flex-grow print:overflow-hidden
           ${
             sortedPins.length <= 8
-              ? 'print:card-body-lg'
+              ? 'print:p-3'
               : sortedPins.length <= 15
-                ? 'print:card-body-md'
-                : 'print:card-body-sm'
+                ? 'print:p-2'
+                : 'print:p-1.5'
           }
         `}
                       >
                         <p
                           className={`
-            print:text-gray-700 print:whitespace-pre-line print:h-full
+            print:text-gray-700 print:whitespace-pre-line
             ${
               sortedPins.length <= 4
                 ? 'print:text-sm'
                 : sortedPins.length <= 8
                   ? 'print:text-xs'
                   : sortedPins.length <= 15
-                    ? 'print:text-[8px]'
-                    : 'print:text-[7px]'
+                    ? 'print:text-[9px]'
+                    : 'print:text-[8px]'
+            }
+            ${
+              sortedPins.length <= 4
+                ? 'print:line-clamp-none'
+                : sortedPins.length <= 8
+                  ? 'print:line-clamp-10'
+                  : sortedPins.length <= 15
+                    ? 'print:line-clamp-8'
+                    : 'print:line-clamp-6'
             }
           `}
                         >
@@ -574,15 +575,14 @@ function PamphletContent() {
               </div>
 
               {/* フッター */}
-              {/* <div className="print:mt-2 print:text-xs print:text-gray-500 print:text-right print:pr-2">
+              <div className="print:mt-2 print:text-xs print:text-gray-500 print:text-right print:pr-2">
                 <p>印刷日： {new Date().toLocaleDateString('ja-JP')}</p>
-              </div> */}
+              </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* 印刷用のスタイル */}
       {/* 印刷用のスタイル */}
       <style jsx global>{`
         @media print {
@@ -639,6 +639,10 @@ function PamphletContent() {
             padding: 1rem !important;
           }
 
+          .print\\:p-3 {
+            padding: 0.75rem !important;
+          }
+
           .print\\:w-\\[55\\%\\] {
             width: 55% !important;
             padding-right: 0.5rem !important;
@@ -654,27 +658,8 @@ function PamphletContent() {
             display: flex !important;
           }
 
-          .print\\:inline-block {
-            display: inline-block !important;
-          }
-
-          .print\\:relative {
-            position: relative !important;
-          }
-
-          .print\\:absolute {
-            position: absolute !important;
-          }
-
-          /* 画像最大高さを設定 */
-          .print\\:max-h-\\[calc\\(100vh-18rem\\)\\] {
-            max-height: calc(100vh - 18rem) !important;
-          }
-
-          /* グリッドレイアウト調整 - ピン数に合わせて */
           .print\\:grid {
             display: grid !important;
-            height: 100% !important;
           }
 
           .print\\:grid-cols-1 {
@@ -689,92 +674,164 @@ function PamphletContent() {
             grid-template-columns: 1fr 1fr 1fr !important;
           }
 
-          /* グリッドの行数設定 - ピン数に応じて */
-          .print\\:grid-rows-1 {
-            grid-template-rows: 1fr !important;
-          }
-
-          .print\\:grid-rows-2 {
-            grid-template-rows: 1fr 1fr !important;
-          }
-
-          .print\\:grid-rows-3 {
-            grid-template-rows: 1fr 1fr 1fr !important;
-          }
-
-          .print\\:grid-rows-4 {
-            grid-template-rows: 1fr 1fr 1fr 1fr !important;
-          }
-
-          .print\\:grid-rows-5 {
-            grid-template-rows: 1fr 1fr 1fr 1fr 1fr !important;
-          }
-
-          .print\\:grid-rows-6 {
-            grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr !important;
-          }
-
-          /* グリッドアイテムの配置 */
-          .print\\:h-full {
-            height: 100% !important;
+          .print\\:flex-col {
+            flex-direction: column !important;
           }
 
           .print\\:flex-grow {
             flex-grow: 1 !important;
           }
 
-          .print\\:flex-col {
-            flex-direction: column !important;
+          .print\\:items-center {
+            align-items: center !important;
           }
 
-          /* カード内のレイアウト調整 */
-          .print\\:card-header-sm {
-            padding: 0.125rem 0.25rem !important;
-            min-height: 1.5rem !important;
+          .print\\:justify-center {
+            justify-content: center !important;
           }
 
-          .print\\:card-header-md {
-            padding: 0.25rem 0.5rem !important;
-            min-height: 2rem !important;
+          .print\\:inline-block {
+            display: inline-block !important;
           }
 
-          .print\\:card-header-lg {
-            padding: 0.5rem 0.75rem !important;
-            min-height: 2.5rem !important;
+          .print\\:relative {
+            position: relative !important;
           }
 
-          .print\\:card-body-sm {
-            padding: 0.125rem 0.25rem !important;
+          .print\\:absolute {
+            position: absolute !important;
           }
 
-          .print\\:card-body-md {
-            padding: 0.25rem 0.5rem !important;
+          /* カードスタイル */
+          .print\\:rounded-lg {
+            border-radius: 0.5rem !important;
           }
 
-          .print\\:card-body-lg {
-            padding: 0.5rem 0.75rem !important;
+          .print\\:shadow-md {
+            box-shadow:
+              0 4px 6px -1px rgba(0, 0, 0, 0.1),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
           }
 
-          /* テキスト切り詰め用クラス */
-          .print\\:line-clamp-2 {
-            display: -webkit-box !important;
-            -webkit-line-clamp: 2 !important;
-            -webkit-box-orient: vertical !important;
-            overflow: hidden !important;
+          .print\\:border {
+            border-width: 1px !important;
           }
 
-          .print\\:line-clamp-3 {
-            display: -webkit-box !important;
-            -webkit-line-clamp: 3 !important;
-            -webkit-box-orient: vertical !important;
-            overflow: hidden !important;
+          .print\\:border-gray-200 {
+            border-color: #e5e7eb !important;
           }
 
-          .print\\:line-clamp-4 {
-            display: -webkit-box !important;
-            -webkit-line-clamp: 4 !important;
-            -webkit-box-orient: vertical !important;
-            overflow: hidden !important;
+          .print\\:border-b {
+            border-bottom-width: 1px !important;
+          }
+
+          /* 背景グラデーション */
+          .print\\:bg-gradient-to-r {
+            background-image: linear-gradient(to right, var(--tw-gradient-stops)) !important;
+          }
+
+          .print\\:from-sky-100 {
+            --tw-gradient-from: #e0f2fe !important;
+            --tw-gradient-stops:
+              var(--tw-gradient-from), var(--tw-gradient-to, rgba(224, 242, 254, 0)) !important;
+          }
+
+          .print\\:to-blue-50 {
+            --tw-gradient-to: #eff6ff !important;
+          }
+
+          /* ギャップ設定 */
+          .print\\:gap-3 {
+            gap: 0.75rem !important;
+          }
+
+          /* テキストスタイル */
+          .print\\:text-xl {
+            font-size: 1.25rem !important;
+            line-height: 1.75rem !important;
+          }
+
+          .print\\:text-lg {
+            font-size: 1.125rem !important;
+            line-height: 1.75rem !important;
+          }
+
+          .print\\:text-base {
+            font-size: 1rem !important;
+            line-height: 1.5rem !important;
+          }
+
+          .print\\:text-sm {
+            font-size: 0.875rem !important;
+            line-height: 1.25rem !important;
+          }
+
+          .print\\:text-xs {
+            font-size: 0.75rem !important;
+            line-height: 1rem !important;
+          }
+
+          .print\\:text-\\[9px\\] {
+            font-size: 9px !important;
+          }
+
+          .print\\:text-\\[8px\\] {
+            font-size: 8px !important;
+          }
+
+          .print\\:font-bold {
+            font-weight: 700 !important;
+          }
+
+          .print\\:text-gray-700 {
+            color: #374151 !important;
+          }
+
+          .print\\:text-gray-800 {
+            color: #1f2937 !important;
+          }
+
+          .print\\:text-sky-800 {
+            color: #075985 !important;
+          }
+
+          /* 画像最大高さを設定 */
+          .print\\:max-h-\\[calc\\(100vh-18rem\\)\\] {
+            max-height: calc(100vh - 18rem) !important;
+          }
+
+          /* コンテンツの均等配置 */
+          .print\\:h-full {
+            height: 100% !important;
+          }
+          /* 印刷用のスタイル追加部分 */
+          .print\\:max-h-\\[calc\\(100vh-10rem\\)\\] {
+            max-height: calc(100vh - 10rem) !important;
+          }
+
+          .print\\:auto-rows-min {
+            grid-auto-rows: min-content !important;
+          }
+
+          .print\\:h-auto {
+            height: auto !important;
+          }
+
+          .print\\:min-h-0 {
+            min-height: 0 !important;
+          }
+
+          .print\\:p-2 {
+            padding: 0.5rem !important;
+          }
+
+          .print\\:p-1\\.5 {
+            padding: 0.375rem !important;
+          }
+
+          .print\\:line-clamp-none {
+            -webkit-line-clamp: unset !important;
+            display: block !important;
           }
 
           .print\\:line-clamp-6 {
@@ -784,47 +841,18 @@ function PamphletContent() {
             overflow: hidden !important;
           }
 
-          .print\\:truncate {
+          .print\\:line-clamp-8 {
+            display: -webkit-box !important;
+            -webkit-line-clamp: 8 !important;
+            -webkit-box-orient: vertical !important;
             overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            white-space: nowrap !important;
           }
 
-          /* フレックスグロー設定 */
-          .print\\:flex {
-            display: flex !important;
-          }
-
-          .print\\:flex-grow {
-            flex-grow: 1 !important;
-          }
-
-          /* 小さいフォントサイズのサポート */
-          .print\\:text-\\[6px\\] {
-            font-size: 6px !important;
-          }
-
-          .print\\:text-\\[7px\\] {
-            font-size: 7px !important;
-          }
-
-          .print\\:text-\\[8px\\] {
-            font-size: 8px !important;
-          }
-
-          .print\\:leading-tight {
-            line-height: 1.25 !important;
-          }
-
-          /* カード表示の最適化 */
-          .print\\:overflow-auto {
-            overflow: auto !important;
-          }
-
-          .print\\:flex-grow-container {
-            display: flex !important;
-            flex-direction: column !important;
-            height: calc(100vh - 15rem) !important;
+          .print\\:line-clamp-10 {
+            display: -webkit-box !important;
+            -webkit-line-clamp: 10 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
           }
         }
       `}</style>
