@@ -8,7 +8,7 @@
 
 Pamfreeのアイコンは、ピンを意識して描かれています。
 
-アイコンは、ひつじくん[@oldsheep](https://x.com/oldsheeep)による制作です。大感謝です。
+アイコンは、ひつじくん[ホームページへ](https://sheeplab.net/)による制作です。大感謝です。
 
 <Br/>
 
