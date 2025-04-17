@@ -470,42 +470,104 @@ function PamphletContent() {
                 </h2>
               </div>
 
-              <div className="print:flex-grow print:overflow-auto print:border print:border-gray-200 print:rounded-lg print:p-3 print:shadow-sm">
-                {/* ピンの数に応じて列数とサイズを調整 */}
+              <div className="print:flex-grow print:overflow-auto print:border print:border-gray-200 print:rounded-lg print:p-1 print:shadow-sm print:flex-grow-container">
+                {/* ピンの数に応じて最適なグリッドレイアウトを選択 */}
                 <div
                   className={`
-                  print:grid print:gap-2
-                  ${
-                    sortedPins.length <= 4
-                      ? 'print:grid-cols-1'
-                      : sortedPins.length <= 10
-                        ? 'print:grid-cols-2'
-                        : 'print:grid-cols-2 print:text-xs'
-                  }
-                `}
+    print:grid print:h-full print:w-full print:gap-1
+    ${
+      sortedPins.length <= 4
+        ? 'print:grid-cols-1 print:grid-rows-' + sortedPins.length
+        : sortedPins.length <= 6
+          ? 'print:grid-cols-2 print:grid-rows-3'
+          : sortedPins.length <= 8
+            ? 'print:grid-cols-2 print:grid-rows-4'
+            : sortedPins.length <= 9
+              ? 'print:grid-cols-3 print:grid-rows-3'
+              : sortedPins.length <= 12
+                ? 'print:grid-cols-3 print:grid-rows-4'
+                : sortedPins.length <= 15
+                  ? 'print:grid-cols-3 print:grid-rows-5'
+                  : 'print:grid-cols-3 print:grid-rows-6'
+    }
+    `}
                 >
                   {sortedPins.map((pin, index) => (
                     <div
                       key={pin.id}
-                      className="print:bg-white print:rounded print:border print:border-gray-200 print:overflow-hidden print:break-inside-avoid print:shadow-sm"
+                      className="print:bg-white print:rounded print:border print:border-gray-200 print:overflow-hidden print:break-inside-avoid print:shadow-sm print:flex print:flex-col print:h-full"
                     >
-                      <div className="print:px-3 print:py-2 print:border-b print:border-gray-100 print:bg-gradient-to-r print:from-sky-50 print:to-white print:flex print:items-center">
-                        <div className="print:w-5 print:h-5 print:flex print:items-center print:justify-center print:bg-black print:rounded-full print:text-white print:mr-2 print:flex-shrink-0">
-                          <span className="print:text-xs print:font-bold">{index + 1}</span>
+                      <div
+                        className={`
+          print:border-b print:border-gray-100 print:bg-gradient-to-r print:from-sky-50 print:to-white 
+          print:flex print:items-center
+          ${
+            sortedPins.length <= 8
+              ? 'print:card-header-lg'
+              : sortedPins.length <= 15
+                ? 'print:card-header-md'
+                : 'print:card-header-sm'
+          }
+        `}
+                      >
+                        <div className="print:w-4 print:h-4 print:flex print:items-center print:justify-center print:bg-black print:rounded-full print:text-white print:mr-1 print:flex-shrink-0">
+                          <span
+                            className={`print:font-bold ${
+                              sortedPins.length > 18 ? 'print:text-[6px]' : 'print:text-xs'
+                            }`}
+                          >
+                            {index + 1}
+                          </span>
                         </div>
-                        <div className="print:flex-grow">
-                          <h3 className="print:font-medium print:text-gray-800 print:text-sm">
+                        <div className="print:flex-grow print:truncate">
+                          <h3
+                            className={`print:font-medium print:text-gray-800 ${
+                              sortedPins.length <= 8
+                                ? 'print:text-sm'
+                                : sortedPins.length <= 15
+                                  ? 'print:text-xs'
+                                  : 'print:text-[8px]'
+                            } print:truncate`}
+                          >
                             {pin.title}
                           </h3>
-                          {pin.editor_nickname && (
-                            <span className="print:text-xs print:text-gray-500">
+                          {pin.editor_nickname && sortedPins.length <= 15 && (
+                            <span
+                              className={`print:text-gray-500 ${
+                                sortedPins.length > 12 ? 'print:text-[6px]' : 'print:text-xs'
+                              }`}
+                            >
                               作成者: {pin.editor_nickname}
                             </span>
                           )}
                         </div>
                       </div>
-                      <div className="print:p-2">
-                        <p className="print:text-xs print:text-gray-700 print:whitespace-pre-line">
+                      <div
+                        className={`
+          print:flex-grow print:overflow-hidden
+          ${
+            sortedPins.length <= 8
+              ? 'print:card-body-lg'
+              : sortedPins.length <= 15
+                ? 'print:card-body-md'
+                : 'print:card-body-sm'
+          }
+        `}
+                      >
+                        <p
+                          className={`
+            print:text-gray-700 print:whitespace-pre-line print:h-full
+            ${
+              sortedPins.length <= 4
+                ? 'print:text-sm'
+                : sortedPins.length <= 8
+                  ? 'print:text-xs'
+                  : sortedPins.length <= 15
+                    ? 'print:text-[8px]'
+                    : 'print:text-[7px]'
+            }
+          `}
+                        >
                           {pin.description || '説明はありません'}
                         </p>
                       </div>
@@ -523,6 +585,7 @@ function PamphletContent() {
         </div>
       </main>
 
+      {/* 印刷用のスタイル */}
       {/* 印刷用のスタイル */}
       <style jsx global>{`
         @media print {
@@ -609,6 +672,162 @@ function PamphletContent() {
           /* 画像最大高さを設定 */
           .print\\:max-h-\\[calc\\(100vh-18rem\\)\\] {
             max-height: calc(100vh - 18rem) !important;
+          }
+
+          /* グリッドレイアウト調整 - ピン数に合わせて */
+          .print\\:grid {
+            display: grid !important;
+            height: 100% !important;
+          }
+
+          .print\\:grid-cols-1 {
+            grid-template-columns: 1fr !important;
+          }
+
+          .print\\:grid-cols-2 {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          .print\\:grid-cols-3 {
+            grid-template-columns: 1fr 1fr 1fr !important;
+          }
+
+          /* グリッドの行数設定 - ピン数に応じて */
+          .print\\:grid-rows-1 {
+            grid-template-rows: 1fr !important;
+          }
+
+          .print\\:grid-rows-2 {
+            grid-template-rows: 1fr 1fr !important;
+          }
+
+          .print\\:grid-rows-3 {
+            grid-template-rows: 1fr 1fr 1fr !important;
+          }
+
+          .print\\:grid-rows-4 {
+            grid-template-rows: 1fr 1fr 1fr 1fr !important;
+          }
+
+          .print\\:grid-rows-5 {
+            grid-template-rows: 1fr 1fr 1fr 1fr 1fr !important;
+          }
+
+          .print\\:grid-rows-6 {
+            grid-template-rows: 1fr 1fr 1fr 1fr 1fr 1fr !important;
+          }
+
+          /* グリッドアイテムの配置 */
+          .print\\:h-full {
+            height: 100% !important;
+          }
+
+          .print\\:flex-grow {
+            flex-grow: 1 !important;
+          }
+
+          .print\\:flex-col {
+            flex-direction: column !important;
+          }
+
+          /* カード内のレイアウト調整 */
+          .print\\:card-header-sm {
+            padding: 0.125rem 0.25rem !important;
+            min-height: 1.5rem !important;
+          }
+
+          .print\\:card-header-md {
+            padding: 0.25rem 0.5rem !important;
+            min-height: 2rem !important;
+          }
+
+          .print\\:card-header-lg {
+            padding: 0.5rem 0.75rem !important;
+            min-height: 2.5rem !important;
+          }
+
+          .print\\:card-body-sm {
+            padding: 0.125rem 0.25rem !important;
+          }
+
+          .print\\:card-body-md {
+            padding: 0.25rem 0.5rem !important;
+          }
+
+          .print\\:card-body-lg {
+            padding: 0.5rem 0.75rem !important;
+          }
+
+          /* テキスト切り詰め用クラス */
+          .print\\:line-clamp-2 {
+            display: -webkit-box !important;
+            -webkit-line-clamp: 2 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+          }
+
+          .print\\:line-clamp-3 {
+            display: -webkit-box !important;
+            -webkit-line-clamp: 3 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+          }
+
+          .print\\:line-clamp-4 {
+            display: -webkit-box !important;
+            -webkit-line-clamp: 4 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+          }
+
+          .print\\:line-clamp-6 {
+            display: -webkit-box !important;
+            -webkit-line-clamp: 6 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+          }
+
+          .print\\:truncate {
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+          }
+
+          /* フレックスグロー設定 */
+          .print\\:flex {
+            display: flex !important;
+          }
+
+          .print\\:flex-grow {
+            flex-grow: 1 !important;
+          }
+
+          /* 小さいフォントサイズのサポート */
+          .print\\:text-\\[6px\\] {
+            font-size: 6px !important;
+          }
+
+          .print\\:text-\\[7px\\] {
+            font-size: 7px !important;
+          }
+
+          .print\\:text-\\[8px\\] {
+            font-size: 8px !important;
+          }
+
+          .print\\:leading-tight {
+            line-height: 1.25 !important;
+          }
+
+          /* カード表示の最適化 */
+          .print\\:overflow-auto {
+            overflow: auto !important;
+          }
+
+          .print\\:flex-grow-container {
+            display: flex !important;
+            flex-direction: column !important;
+            height: calc(100vh - 15rem) !important;
           }
         }
       `}</style>
