@@ -156,32 +156,11 @@ function PamphletContent() {
   return (
     <div ref={containerRef} className="bg-white min-h-screen">
       {/* 画面表示用のヘッダー（印刷時には非表示） */}
-      <header className="print:hidden bg-sky-600 text-white py-4 px-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">{mapData.title}</h1>
-        </div>
+      <header className="print:hidden py-4 px-6 mt-2 flex justify-center items-center">
         <div className="flex gap-3">
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2 bg-white text-sky-600 rounded-md hover:bg-sky-50 flex items-center"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-            印刷する
-          </button>
           <Link
             href={`/viewer?id=${mapId}`}
-            className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-800 flex items-center"
+            className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 flex items-center"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -197,11 +176,29 @@ function PamphletContent() {
             </svg>
             戻る
           </Link>
+          <button
+            onClick={handlePrint}
+            className="px-4 py-2 bg-sky-600 text-white rounded-md hover:bg-sky-700 flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z"
+                clipRule="evenodd"
+              />
+            </svg>
+            印刷する
+          </button>
         </div>
       </header>
 
       {/* 印刷用メインコンテンツ */}
-      <main className="p-6 print:p-0 max-w-6xl mx-auto print:max-w-none">
+      <main className="p-2 print:p-0 max-w-6xl mx-auto print:max-w-none">
         {/* 画面用のレイアウト - スマホやデスクトップでの表示用 */}
         <div className="print:hidden">
           {/* タイトルとフロア情報 */}
@@ -577,9 +574,9 @@ function PamphletContent() {
               </div>
 
               {/* フッター */}
-              <div className="print:mt-2 print:text-xs print:text-gray-500 print:text-right print:pr-2">
+              {/* <div className="print:mt-2 print:text-xs print:text-gray-500 print:text-right print:pr-2">
                 <p>印刷日： {new Date().toLocaleDateString('ja-JP')}</p>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
