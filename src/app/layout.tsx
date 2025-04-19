@@ -18,13 +18,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Pamfree',
   description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
-  icons: {
-    icon: [
-      { url: '/icon0.svg', type: 'image/svg+xml' },
-      { url: '/icon1.png', sizes: '48x48', type: 'image/png' },
-    ],
-    apple: '/apple-icon.png',
-  },
   openGraph: {
     title: 'Pamfree',
     description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
