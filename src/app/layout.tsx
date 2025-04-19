@@ -15,34 +15,16 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-// export const metadata: Metadata = {
-//   title: {
-//     template: '%s | Pamfree',
-//     default: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
-//   },
-//   description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
-//   // icons: {
-//   //   icon: '/logo.svg',
-//   // },
-//   openGraph: {
-//     type: 'website',
-//     locale: 'ja_JP',
-//     url: 'https://timer-git-main-yudaishimamuras-projects.vercel.app',
-//     title: 'Pamfree - 地図やフロアプランをインタラクティブに変える電子パンフレット。',
-//     description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
-//     siteName: 'Pamfree',
-//     images: [
-//       {
-//         url: 'https://timer-git-main-yudaishimamuras-projects.vercel.app/pamfree.png', // 相対パスに変更
-//         alt: 'PamfreeのOGP画像',
-//       },
-//     ],
-//   },
-// };
-
 export const metadata: Metadata = {
   title: 'Pamfree',
   description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
+  icons: {
+    icon: [
+      { url: '/icon0.svg', type: 'image/svg+xml' },
+      { url: '/icon1.png', sizes: '48x48', type: 'image/png' },
+    ],
+    apple: '/apple-icon.png',
+  },
   openGraph: {
     title: 'Pamfree',
     description: '地図やフロアプランをインタラクティブに変える電子パンフレット。',
