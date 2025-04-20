@@ -158,7 +158,16 @@ export default function HomePage() {
                   variant="outline"
                   className="gap-2 border-sky-300 text-sky-700 hover:bg-sky-50 cursor-pointer"
                 >
-                  デモを見る <Eye className="h-4 w-4" />
+                  デモを閲覧する <Eye className="h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="https://www.pamfree.com/public-edit?id=gikuhaku-vol1">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 border-sky-300 bg-red-400 text-white hover:bg-sky-50 cursor-pointer"
+                >
+                  技育博特設サイト <Eye className="h-4 w-4" />
                 </Button>
               </Link>
             </motion.div>
