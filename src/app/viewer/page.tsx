@@ -312,7 +312,6 @@ function ViewerContent() {
                           pin={pin}
                           floors={floors}
                           containerRef={normalViewRef}
-                          is3DView={false}
                           isViewerMode={true}
                           isSelected={selectedPinId === pin.id}
                         />
