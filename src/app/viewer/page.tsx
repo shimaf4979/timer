@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MapData, Floor, Pin } from '@/types/map-types';
 import PinList from '@/components/PinList';
-import ImprovedView3D from '@/components/ImprovedView3D';
 import NormalView from '@/components/NormalView';
 import LoadingIndicator from '@/components/LoadingIndicator';
 import EnhancedPinViewer from '@/components/EnhancedPinViewer';
@@ -20,7 +19,6 @@ function ViewerContent() {
   const [floors, setFloors] = useState<Floor[]>([]);
   const [pins, setPins] = useState<Pin[]>([]);
   const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
-  const [is3DView, setIs3DView] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -135,27 +133,6 @@ function ViewerContent() {
   // エリアの変更
   const handleFloorChange = (floor: Floor) => {
     setActiveFloor(floor);
-
-    // 3Dビューの場合、フロントインデックスも更新
-    if (is3DView) {
-      const index = floors.findIndex((f) => f.id === floor.id);
-      if (index !== -1) {
-        setFrontFloorIndex(index);
-      }
-    }
-  };
-
-  // 3D表示モードを切り替え
-  const toggle3DView = () => {
-    setIs3DView(!is3DView);
-
-    // 3Dビューに切り替えるとき、現在のアクティブフロアがフロント表示されるようにする
-    if (!is3DView && activeFloor) {
-      const index = floors.findIndex((f) => f.id === activeFloor.id);
-      if (index !== -1) {
-        setFrontFloorIndex(index);
-      }
-    }
   };
 
   // ピンをクリックしたときの処理（ピン本体またはピン一覧からのクリック）
@@ -171,14 +148,6 @@ function ViewerContent() {
       const pinFloor = floors.find((floor) => floor.id === pin.floor_id);
       if (pinFloor) {
         setActiveFloor(pinFloor);
-
-        // 3Dビューの場合、フロントインデックスも更新
-        if (is3DView) {
-          const index = floors.findIndex((f) => f.id === pinFloor.id);
-          if (index !== -1) {
-            setFrontFloorIndex(index);
-          }
-        }
 
         // 少し遅延してピンに視覚的にフォーカスを当てる
         setTimeout(() => {
@@ -205,7 +174,7 @@ function ViewerContent() {
     return () => {
       window.removeEventListener('pinClick', handleGlobalPinClick);
     };
-  }, [selectedPinId, floors, is3DView]); // 依存配列を更新
+  }, [selectedPinId, floors]); // 依存配列を更新
 
   if (loading) {
     return (
@@ -295,18 +264,6 @@ function ViewerContent() {
                 )}
               </div>
 
-              {/* 3D表示切り替えボタン */}
-              <button
-                onClick={toggle3DView}
-                className={`w-full px-4 py-2 rounded-md transition-colors ${
-                  is3DView
-                    ? 'bg-purple-500 hover:bg-purple-600 text-white'
-                    : 'bg-gray-500 hover:bg-gray-600 text-white'
-                } mb-2`}
-                disabled={floors.length <= 1}
-              >
-                {is3DView ? '通常表示に戻す' : '3D表示にする(ベータ版)'}
-              </button>
               <Link
                 href={`/pamphlet?id=${mapId}${activeFloor ? `&floor=${activeFloor.id}` : ''}`}
                 className="inline-flex justify-center items-center px-4 py-2 text-white bg-sky-500 hover:bg-sky-600 rounded-md transition-colors w-full"
@@ -333,62 +290,34 @@ function ViewerContent() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
               <h2 className="text-lg font-semibold mb-4 text-gray-700">
-                {is3DView
-                  ? '3D表示(ベータ版)'
-                  : `${activeFloor?.name || 'エリアを選択してください'} 表示`}
+                {`${activeFloor?.name || 'エリアを選択してください'} 表示`}
               </h2>
               <div
                 ref={containerRef}
                 className="relative bg-gray-100 rounded-lg overflow-hidden flex flex-col justify-center items-center"
               >
-                {is3DView ? (
-                  <div className="w-full h-96 relative">
-                    <ImprovedView3D
-                      floors={floors}
-                      pins={[]} // 空のピン配列を渡す（カスタムピン表示を使う）
-                      frontFloorIndex={frontFloorIndex}
-                      showArrows={showModalArrows}
-                      onNextFloor={showNextFloor}
-                      onPrevFloor={showPrevFloor}
-                    />
+                <div ref={normalViewRef} className="w-full h-96 relative">
+                  <NormalView
+                    floor={activeFloor}
+                    pins={[]} // 空のピン配列を渡す（カスタムピン表示を使う）
+                  />
 
-                    {/* カスタムピン表示 */}
-                    {pins.map((pin) => (
-                      <EnhancedPinViewer
-                        key={pin.id}
-                        pin={pin}
-                        floors={floors}
-                        containerRef={containerRef}
-                        is3DView={true}
-                        isViewerMode={true}
-                        isSelected={selectedPinId === pin.id}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div ref={normalViewRef} className="w-full h-96 relative">
-                    <NormalView
-                      floor={activeFloor}
-                      pins={[]} // 空のピン配列を渡す（カスタムピン表示を使う）
-                    />
-
-                    {/* 現在のフロアのピンのみを表示 */}
-                    {activeFloor &&
-                      pins
-                        .filter((pin) => pin.floor_id === activeFloor.id)
-                        .map((pin) => (
-                          <EnhancedPinViewer
-                            key={pin.id}
-                            pin={pin}
-                            floors={floors}
-                            containerRef={normalViewRef}
-                            is3DView={false}
-                            isViewerMode={true}
-                            isSelected={selectedPinId === pin.id}
-                          />
-                        ))}
-                  </div>
-                )}
+                  {/* 現在のフロアのピンのみを表示 */}
+                  {activeFloor &&
+                    pins
+                      .filter((pin) => pin.floor_id === activeFloor.id)
+                      .map((pin) => (
+                        <EnhancedPinViewer
+                          key={pin.id}
+                          pin={pin}
+                          floors={floors}
+                          containerRef={normalViewRef}
+                          is3DView={false}
+                          isViewerMode={true}
+                          isSelected={selectedPinId === pin.id}
+                        />
+                      ))}
+                </div>
               </div>
 
               {/* ピン一覧 */}
@@ -398,7 +327,6 @@ function ViewerContent() {
                   floors={floors}
                   activeFloor={activeFloor?.id || null}
                   onPinClick={handlePinClick}
-                  is3DView={is3DView}
                   selectedPinId={selectedPinId}
                 />
               </div>
