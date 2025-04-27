@@ -4,6 +4,8 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { SessionProvider } from 'next-auth/react';
 import NavigationBar from '@/components/NavigationBar';
+import { QueryProvider } from '@/lib/providers';
+import { Toaster } from '@/components/ui/toaster';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -41,8 +43,11 @@ export default function RootLayout({
       <meta name="apple-mobile-web-app-title" content="MyWebSite" />
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>
-          <NavigationBar />
-          {children}
+          <QueryProvider>
+            <NavigationBar />
+            {children}
+            <Toaster />
+          </QueryProvider>
         </SessionProvider>
       </body>
     </html>

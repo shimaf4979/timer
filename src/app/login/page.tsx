@@ -1,31 +1,29 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowRight, Mail, Lock, CheckCircle } from 'lucide-react';
+import { useUIStore } from '@/lib/store';
+import { useMutation } from '@tanstack/react-query';
 
-// 検索パラメータを使用する部分を別コンポーネントに分離
-function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+// ログイン処理用のフック
+const useLogin = () => {
   const router = useRouter();
-  
-  // useSearchParamsはここで使用
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
-  const registered = searchParams.get('registered') === 'true';
+  const { setError } = useUIStore();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
+  return useMutation({
+    mutationFn: async ({
+      email,
+      password,
+      callbackUrl,
+    }: {
+      email: string;
+      password: string;
+      callbackUrl: string;
+    }) => {
       const result = await signIn('credentials', {
         redirect: false,
         email,
@@ -34,17 +32,43 @@ function LoginForm() {
       });
 
       if (result?.error) {
-        setError('メールアドレスまたはパスワードが正しくありません');
-        setLoading(false);
-        return;
+        throw new Error('メールアドレスまたはパスワードが正しくありません');
       }
 
-      router.push(callbackUrl);
+      return result;
+    },
+    onSuccess: (result, variables) => {
+      router.push(variables.callbackUrl);
       router.refresh();
+    },
+    onError: (error: Error) => {
+      setError(error.message);
+    },
+  });
+};
+
+// 検索パラメータを使用する部分を別コンポーネントに分離
+function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { error, setError } = useUIStore();
+
+  // ログインフック
+  const loginMutation = useLogin();
+
+  // useSearchParamsはここで使用
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const registered = searchParams.get('registered') === 'true';
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      await loginMutation.mutateAsync({ email, password, callbackUrl });
     } catch (error) {
       console.error('ログインエラー:', error);
-      setError('ログイン中にエラーが発生しました');
-      setLoading(false);
     }
   };
 
@@ -59,22 +83,38 @@ function LoginForm() {
         >
           <Link href="/" className="inline-block mb-6">
             <div className="flex items-center justify-center h-12 w-12 rounded-full bg-sky-100 text-sky-600 mx-auto">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-map"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="lucide lucide-map"
+              >
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+                <line x1="9" x2="9" y1="3" y2="18" />
+                <line x1="15" x2="15" y1="6" y2="21" />
+              </svg>
             </div>
           </Link>
-          <h2 className="text-3xl font-bold text-slate-900 mb-2">
-            アカウントにログイン
-          </h2>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">アカウントにログイン</h2>
           <p className="text-slate-600">
             または{' '}
-            <Link href="/register" className="font-medium text-sky-600 hover:text-sky-700 transition-colors">
+            <Link
+              href="/register"
+              className="font-medium text-sky-600 hover:text-sky-700 transition-colors"
+            >
               新規登録
             </Link>
           </p>
         </motion.div>
-        
+
         {registered && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -84,7 +124,7 @@ function LoginForm() {
             <span>登録が完了しました。ログインしてください。</span>
           </motion.div>
         )}
-        
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -94,7 +134,10 @@ function LoginForm() {
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email-address" className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  htmlFor="email-address"
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
                   メールアドレス
                 </label>
                 <div className="relative">
@@ -146,14 +189,30 @@ function LoginForm() {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loginMutation.isPending}
                 className="w-full flex items-center justify-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-sky-300 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? (
+                {loginMutation.isPending ? (
                   <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     ログイン中...
                   </span>
@@ -166,14 +225,14 @@ function LoginForm() {
               </button>
             </div>
           </form>
-          
+
           {/* <div className="mt-6 text-center">
             <Link href="/forgot-password" className="text-sm text-sky-600 hover:text-sky-700 transition-colors">
               パスワードをお忘れですか？
             </Link>
           </div> */}
         </motion.div>
-        
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -181,8 +240,15 @@ function LoginForm() {
           className="text-center mt-8 text-sm text-slate-500"
         >
           <p>
-            ログインすることで、<Link href="/terms" className="text-sky-600 hover:text-sky-700">利用規約</Link>および
-            <Link href="/privacy" className="text-sky-600 hover:text-sky-700">プライバシーポリシー</Link>に同意したことになります。
+            ログインすることで、
+            <Link href="/terms" className="text-sky-600 hover:text-sky-700">
+              利用規約
+            </Link>
+            および
+            <Link href="/privacy" className="text-sky-600 hover:text-sky-700">
+              プライバシーポリシー
+            </Link>
+            に同意したことになります。
           </p>
         </motion.div>
       </div>
@@ -191,9 +257,18 @@ function LoginForm() {
 }
 
 // メインのコンポーネント
-export default function Login() {
+export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">読み込み中...</p>
+          </div>
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

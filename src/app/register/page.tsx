@@ -1,216 +1,85 @@
-// // app/register/page.tsx
-// 'use client';
+'use client';
 
-// import { useState } from 'react';
-// import { useRouter } from 'next/navigation';
-// import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { ArrowRight, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { useUIStore } from '@/lib/store';
+import { useMutation } from '@tanstack/react-query';
 
-// export default function Register() {
-//   const [name, setName] = useState('');
-//   const [email, setEmail] = useState('');
-//   const [password, setPassword] = useState('');
-//   const [confirmPassword, setConfirmPassword] = useState('');
-//   const [error, setError] = useState('');
-//   const [loading, setLoading] = useState(false);
-//   const router = useRouter();
+// 新規登録処理用のフック
+const useRegister = () => {
+  const router = useRouter();
+  const { setError, addNotification } = useUIStore();
 
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setError('');
-
-//     if (password !== confirmPassword) {
-//       setError('パスワードが一致しません');
-//       return;
-//     }
-
-//     setLoading(true);
-
-//     try {
-//       const response = await fetch('/api/auth/register', {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//         },
-//         body: JSON.stringify({ name, email, password }),
-//       });
-
-//       const data = await response.json();
-
-//       if (!response.ok) {
-//         throw new Error(data.error || '登録に失敗しました');
-//       }
-
-//       // 登録成功後、ログインページへリダイレクト
-//       router.push('/login?registered=true');
-//     } catch (error) {
-//       console.error('Registration error:', error);
-//       if (error instanceof Error) {
-//         setError(error.message);
-//       } else {
-//         setError('登録中にエラーが発生しました');
-//       }
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-//       <div className="max-w-md w-full space-y-8">
-//         <div>
-//           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-//             新規アカウント登録
-//           </h2>
-//           <p className="mt-2 text-center text-sm text-gray-600">
-//             すでにアカウントをお持ちの方は{' '}
-//             <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-//               ログイン
-//             </Link>
-//           </p>
-//         </div>
-//         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-//           <div className="rounded-md shadow-sm -space-y-px">
-//             <div>
-//               <label htmlFor="name" className="sr-only">
-//                 名前
-//               </label>
-//               <input
-//                 id="name"
-//                 name="name"
-//                 type="text"
-//                 required
-//                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-//                 placeholder="名前"
-//                 value={name}
-//                 onChange={(e) => setName(e.target.value)}
-//               />
-//             </div>
-//             <div>
-//               <label htmlFor="email-address" className="sr-only">
-//                 メールアドレス
-//               </label>
-//               <input
-//                 id="email-address"
-//                 name="email"
-//                 type="email"
-//                 autoComplete="email"
-//                 required
-//                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-//                 placeholder="メールアドレス"
-//                 value={email}
-//                 onChange={(e) => setEmail(e.target.value)}
-//               />
-//             </div>
-//             <div>
-//               <label htmlFor="password" className="sr-only">
-//                 パスワード
-//               </label>
-//               <input
-//                 id="password"
-//                 name="password"
-//                 type="password"
-//                 autoComplete="new-password"
-//                 required
-//                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-//                 placeholder="パスワード"
-//                 value={password}
-//                 onChange={(e) => setPassword(e.target.value)}
-//               />
-//             </div>
-//             <div>
-//               <label htmlFor="confirm-password" className="sr-only">
-//                 パスワード（確認）
-//               </label>
-//               <input
-//                 id="confirm-password"
-//                 name="confirm-password"
-//                 type="password"
-//                 autoComplete="new-password"
-//                 required
-//                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-//                 placeholder="パスワード（確認）"
-//                 value={confirmPassword}
-//                 onChange={(e) => setConfirmPassword(e.target.value)}
-//               />
-//             </div>
-//           </div>
-
-//           {error && (
-//             <div className="text-red-500 text-sm text-center">{error}</div>
-//           )}
-
-//           <div>
-//             <button
-//               type="submit"
-//               disabled={loading}
-//               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300"
-//             >
-//               {loading ? '登録中...' : '登録する'}
-//             </button>
-//           </div>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }
-"use client"
-
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { motion } from "framer-motion"
-import { ArrowRight, Mail, Lock, User, AlertCircle } from "lucide-react"
-
-export default function Register() {
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-
-    if (password !== confirmPassword) {
-      setError("パスワードが一致しません")
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
+  return useMutation({
+    mutationFn: async ({
+      name,
+      email,
+      password,
+    }: {
+      name: string;
+      email: string;
+      password: string;
+    }) => {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ name, email, password }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "登録に失敗しました")
+        throw new Error(data.error || '登録に失敗しました');
       }
 
+      return data;
+    },
+    onSuccess: () => {
       // 登録成功後、ログインページへリダイレクト
-      router.push("/login?registered=true")
-    } catch (error) {
-      console.error("Registration error:", error)
-      if (error instanceof Error) {
-        setError(error.message)
-      } else {
-        setError("登録中にエラーが発生しました")
-      }
-    } finally {
-      setLoading(false)
+      router.push('/login?registered=true');
+
+      addNotification({
+        message: '登録が完了しました',
+        type: 'success',
+      });
+    },
+    onError: (error: Error) => {
+      setError(error.message);
+    },
+  });
+};
+
+export default function Register() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [validationError, setValidationError] = useState('');
+  const { error } = useUIStore();
+
+  // 登録フック
+  const registerMutation = useRegister();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setValidationError('');
+
+    if (password !== confirmPassword) {
+      setValidationError('パスワードが一致しません');
+      return;
     }
-  }
+
+    try {
+      await registerMutation.mutateAsync({ name, email, password });
+    } catch (error) {
+      console.error('Registration error:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-50 to-white py-12 px-4 sm:px-6 lg:px-8">
@@ -243,8 +112,11 @@ export default function Register() {
           </Link>
           <h2 className="text-3xl font-bold text-slate-900 mb-2">新規アカウント登録</h2>
           <p className="text-slate-600">
-            すでにアカウントをお持ちの方は{" "}
-            <Link href="/login" className="font-medium text-sky-600 hover:text-sky-700 transition-colors">
+            すでにアカウントをお持ちの方は{' '}
+            <Link
+              href="/login"
+              className="font-medium text-sky-600 hover:text-sky-700 transition-colors"
+            >
               ログイン
             </Link>
           </p>
@@ -280,7 +152,10 @@ export default function Register() {
               </div>
 
               <div>
-                <label htmlFor="email-address" className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  htmlFor="email-address"
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
                   メールアドレス
                 </label>
                 <div className="relative">
@@ -325,7 +200,10 @@ export default function Register() {
               </div>
 
               <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  htmlFor="confirm-password"
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
                   パスワード（確認）
                 </label>
                 <div className="relative">
@@ -347,20 +225,20 @@ export default function Register() {
               </div>
             </div>
 
-            {error && (
+            {(error || validationError) && (
               <div className="flex items-start bg-red-50 p-3 rounded-lg border border-red-100 text-red-600 text-sm">
                 <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+                <span>{error || validationError}</span>
               </div>
             )}
 
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={registerMutation.isPending}
                 className="w-full flex items-center justify-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:bg-sky-300 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? (
+                {registerMutation.isPending ? (
                   <span className="flex items-center">
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
@@ -415,6 +293,5 @@ export default function Register() {
         </motion.div>
       </div>
     </div>
-  )
+  );
 }
-

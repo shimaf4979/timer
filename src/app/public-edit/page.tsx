@@ -1,60 +1,62 @@
-// app/public-edit/page.tsx
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapData, Floor, Pin, PublicEditor } from '@/types/map-types';
 import PinList from '@/components/PinList';
 import NormalView from '@/components/NormalView';
 import ImprovedModal from '@/components/ImprovedModal';
 import LoadingIndicator from '@/components/LoadingIndicator';
 import EnhancedPinViewer from '@/components/EnhancedPinViewer';
 import { getExactImagePosition } from '@/utils/imageExactPositioning';
-import {
-  getEditorFromStorage,
-  verifyEditorToken,
-  registerPublicEditor,
-  addPublicPin,
-  updatePublicPin,
-  deletePublicPin,
-} from '@/utils/publicEditHelpers';
+import { useViewerData, usePublicEditor, usePublicEditPins } from '@/lib/api-hooks';
+import { useUIStore, useMapEditStore, usePublicEditStore } from '@/lib/store';
+import { Floor, Pin } from '@/types/map-types';
 
 // 公開編集用のメインコンテンツコンポーネント
 function PublicEditContent() {
   const searchParams = useSearchParams();
   const mapId = searchParams.get('id') || '';
 
-  // 基本状態
-  const [mapData, setMapData] = useState<MapData | null>(null);
+  // Zustand ストアから状態と操作を取得
+  const { loading, error, setLoading, setError, addNotification } = useUIStore();
+  const {
+    selectedFloorId,
+    isAddingPin,
+    selectedPinId,
+    newPinPosition,
+    setSelectedFloorId,
+    setSelectedPinId,
+    setIsAddingPin,
+    setNewPinPosition,
+    resetPinEditing,
+  } = useMapEditStore();
+  const { editorId, editorNickname, editorToken, setEditorInfo, clearEditorInfo } =
+    usePublicEditStore();
+
+  // TanStack Query で使用するフック
+  const { data, isLoading, isError } = useViewerData(mapId);
+  const { register, registerAsync, verify, verifyAsync, isRegistering, isVerifying } =
+    usePublicEditor();
+  const { addPin, updatePin, deletePin, isAddingPin: isPinAdding } = usePublicEditPins();
+
+  // ローカル状態
+  const [mapData, setMapData] = useState<any>(null);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [pins, setPins] = useState<Pin[]>([]);
   const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showModalArrows, setShowModalArrows] = useState(true);
-
-  // 公開編集状態
-  const [editorInfo, setEditorInfo] = useState<PublicEditor | null>(null);
-  const [nickName, setNickName] = useState('');
   const [showNicknameModal, setShowNicknameModal] = useState(false);
-  const [isAddingPin, setIsAddingPin] = useState(false);
-  const [newPinPosition, setNewPinPosition] = useState({ x: 0, y: 0 });
+  const [nickName, setNickName] = useState('');
   const [newPinInfo, setNewPinInfo] = useState({ title: '', description: '' });
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
-  const [editingPin, setEditingPin] = useState<Pin | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  // フロントに表示するエリアのインデックス
+  const [editingPin, setEditingPin] = useState<Pin | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [frontFloorIndex, setFrontFloorIndex] = useState(0);
 
-  // レスポンシブ対応
-  const [isMobile, setIsMobile] = useState(false);
-
-  // コンテナへの参照
-  const containerRef = useRef<HTMLDivElement>(null);
+  // refs
   const normalViewRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // スマホ検出のためのuseEffect
   useEffect(() => {
@@ -70,111 +72,69 @@ function PublicEditContent() {
     };
   }, []);
 
-  // 既存の編集者情報をローカルストレージから取得
+  // データの初期化
+  useEffect(() => {
+    if (data) {
+      setMapData(data.map);
+      setFloors(data.floors);
+      setPins(data.pins);
+
+      // 最初のエリアをアクティブに設定
+      if (data.floors && data.floors.length > 0) {
+        setActiveFloor(data.floors[0]);
+        setSelectedFloorId(data.floors[0].id);
+      }
+    }
+  }, [data, setSelectedFloorId]);
+
+  // エラー処理
+  useEffect(() => {
+    if (isError) {
+      setError('データの取得に失敗しました');
+    }
+  }, [isError, setError]);
+
+  // 既存の編集者情報をローカルストレージから取得して検証
   useEffect(() => {
     if (!mapId) return;
 
-    const savedEditor = getEditorFromStorage(mapId);
-    if (savedEditor) {
-      // トークンの検証
-      verifyEditorToken(savedEditor.id, savedEditor.token).then(({ verified, editorInfo }) => {
-        if (verified && editorInfo) {
-          setEditorInfo(editorInfo);
+    const checkStoredEditor = async () => {
+      try {
+        // ローカルストレージからデータを取得
+        const storedData = localStorage.getItem(`public_edit_${mapId}`);
+
+        if (storedData) {
+          const savedEditor = JSON.parse(storedData);
+
+          // トークンを検証
+          const verifyResult = await verifyAsync({
+            editorId: savedEditor.id,
+            token: savedEditor.token,
+          });
+
+          if (verifyResult.verified && verifyResult.editorInfo) {
+            // 有効な編集者情報を設定
+            setEditorInfo(
+              verifyResult.editorInfo.id,
+              verifyResult.editorInfo.nickname,
+              verifyResult.editorInfo.token
+            );
+          } else {
+            // 無効なトークンの場合はモーダルを表示
+            setShowNicknameModal(true);
+          }
         } else {
-          // 無効なトークンの場合はモーダルを表示
+          // 保存された情報がない場合はモーダルを表示
           setShowNicknameModal(true);
         }
-      });
-    } else {
-      // 保存された情報がない場合はモーダルを表示
-      setShowNicknameModal(true);
-    }
-  }, [mapId]);
-
-  // データ読み込み
-  useEffect(() => {
-    if (!mapId) {
-      setError('マップIDが指定されていません');
-      setLoading(false);
-      return;
-    }
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        // APIからマップデータを取得
-        const response = await fetch(`/api/viewer/${mapId}`);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'データの取得に失敗しました');
-        }
-
-        const data = await response.json();
-
-        // 公開編集が有効かチェック
-        if (!data.map.is_publicly_editable) {
-          throw new Error('このマップは公開編集が許可されていません');
-        }
-
-        // データを設定
-        setMapData(data.map);
-        setFloors(data.floors);
-
-        // 編集者情報が欠落しているピンには「不明な編集者」を設定
-        const pinsWithEditors = data.pins.map((pin: Pin) => {
-          if (!pin.editor_nickname) {
-            return {
-              ...pin,
-              editor_nickname: '不明な編集者',
-            };
-          }
-          return pin;
-        });
-
-        setPins(pinsWithEditors);
-
-        // 最初のエリアをアクティブに設定
-        if (data.floors && data.floors.length > 0) {
-          setActiveFloor(data.floors[0]);
-        }
-
-        setError(null);
       } catch (error) {
-        console.error('データの取得エラー:', error);
-        setError(error instanceof Error ? error.message : 'データの取得に失敗しました');
-      } finally {
-        setLoading(false);
+        console.error('編集者情報検証エラー:', error);
+        setShowNicknameModal(true);
       }
     };
 
-    fetchData();
-  }, [mapId]);
-
-  // 公開編集者の登録
-  const registerEditor = async () => {
-    if (!mapId || !nickName.trim()) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const editor = await registerPublicEditor(mapId, nickName);
-
-      if (editor) {
-        setEditorInfo(editor);
-        setShowNicknameModal(false);
-      } else {
-        throw new Error('編集者の登録に失敗しました');
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : '編集者の登録に失敗しました');
-    } finally {
-      setLoading(false);
-    }
-  };
+    checkStoredEditor();
+  }, [mapId, verifyAsync, setEditorInfo]);
 
   // 次の階を前面に表示
   const showNextFloor = () => {
@@ -191,16 +151,46 @@ function PublicEditContent() {
   // エリアの変更
   const handleFloorChange = (floor: Floor) => {
     setActiveFloor(floor);
+    setSelectedFloorId(floor.id);
+  };
+
+  // 公開編集者の登録
+  const registerEditor = async () => {
+    if (!mapId || !nickName.trim()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const editorInfo = await registerAsync({ mapId, nickname: nickName });
+
+      if (editorInfo) {
+        // Zustand ストアに保存
+        setEditorInfo(editorInfo.id, editorInfo.nickname, editorInfo.token);
+        setShowNicknameModal(false);
+
+        addNotification({
+          message: '編集者として登録しました',
+          type: 'success',
+        });
+      } else {
+        throw new Error('編集者の登録に失敗しました');
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('編集者の登録に失敗しました');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 写真上でクリックした位置にピンを追加するモードを切り替える
   const toggleAddPinMode = () => {
     setIsAddingPin(!isAddingPin);
-
-    // ピン追加モードを終了するときは選択状態をクリア
-    if (isAddingPin) {
-      setSelectedPinId(null);
-    }
   };
 
   // 画像クリック時のピン追加処理
@@ -208,7 +198,8 @@ function PublicEditContent() {
     e: React.MouseEvent<HTMLDivElement>,
     exactPosition: { x: number; y: number } | null
   ) => {
-    if (!isAddingPin || !editorInfo) return;
+    if (!isAddingPin || !editorId) return;
+
     if (!exactPosition) {
       // 通常のクリック位置計算（フォールバック）
       const targetFloorId = activeFloor?.id;
@@ -237,53 +228,25 @@ function PublicEditContent() {
 
   // 新しいピンの情報を保存
   const savePin = async () => {
-    if (!activeFloor || !editorInfo || newPinInfo.title.trim() === '') return;
+    if (!activeFloor || !editorId || !editorNickname || newPinInfo.title.trim() === '') return;
 
     try {
-      // 一時的なピンをUIに追加（楽観的UI更新）
-      const tempId = `temp-${Date.now()}`;
-      const tempPin: Pin = {
-        id: tempId,
-        floor_id: activeFloor.id,
-        title: newPinInfo.title,
-        description: newPinInfo.description,
-        x_position: newPinPosition.x,
-        y_position: newPinPosition.y,
-        editor_id: editorInfo.id,
-        editor_nickname: editorInfo.nickname,
-        _temp: true,
-      };
-
-      setPins((prevPins) => [...prevPins, tempPin]);
-      setNewPinInfo({ title: '', description: '' });
-      setIsFormOpen(false);
-      setIsAddingPin(false);
-
-      // APIリクエスト
-      const result = await addPublicPin({
+      await addPin({
         floorId: activeFloor.id,
         title: newPinInfo.title,
         description: newPinInfo.description,
         x_position: newPinPosition.x,
         y_position: newPinPosition.y,
-        editorId: editorInfo.id,
-        nickname: editorInfo.nickname,
+        editorId: editorId,
+        nickname: editorNickname,
       });
 
-      if (!result.success) {
-        throw new Error(result.error || 'ピンの追加に失敗しました');
-      }
-
-      // 一時ピンを実際のピンに置き換え
-      setPins((prevPins) => prevPins.filter((pin) => !pin._temp).concat(result.pin));
-
-      // 新しいピンを選択状態にする
-      setSelectedPinId(result.pin.id);
+      // フォームをリセット
+      setNewPinInfo({ title: '', description: '' });
+      setIsFormOpen(false);
+      setIsAddingPin(false);
     } catch (error) {
-      // 一時ピンを削除（失敗時）
-      setPins((prevPins) => prevPins.filter((pin) => !pin._temp));
-
-      setError(error instanceof Error ? error.message : 'ピンの追加に失敗しました');
+      console.error('ピン追加エラー:', error);
     }
   };
 
@@ -300,6 +263,7 @@ function PublicEditContent() {
       const pinFloor = floors.find((floor) => floor.id === pin.floor_id);
       if (pinFloor) {
         setActiveFloor(pinFloor);
+        setSelectedFloorId(pinFloor.id);
 
         // 少し遅延してピンに視覚的にフォーカスを当てる
         setTimeout(() => {
@@ -312,12 +276,68 @@ function PublicEditContent() {
     }
   };
 
+  // ピンの編集を開始
+  const handleEditPin = (pin: Pin) => {
+    // 自分が作成したピンのみ編集可能
+    if (editorId && pin.editor_id === editorId) {
+      setEditingPin(pin);
+      setIsEditModalOpen(true);
+    }
+  };
+
+  // ピンの更新
+  const updatePinHandler = async () => {
+    if (!editingPin || !editorId) return;
+
+    try {
+      await updatePin({
+        pinId: editingPin.id,
+        title: editingPin.title,
+        description: editingPin.description,
+        editorId: editorId,
+      });
+
+      // モーダルを閉じる
+      setIsEditModalOpen(false);
+      setEditingPin(null);
+    } catch (error) {
+      console.error('ピン更新エラー:', error);
+    }
+  };
+
+  // ピンの削除
+  const deletePinHandler = async (pin: Pin) => {
+    if (!editorId) return;
+
+    try {
+      // 自分が作成したピンのみ削除可能
+      if (pin.editor_id !== editorId) {
+        throw new Error('このピンを削除する権限がありません');
+      }
+
+      await deletePin({
+        pinId: pin.id,
+        editorId: editorId,
+      });
+
+      // 選択中のピンだった場合は選択を解除
+      if (selectedPinId === pin.id) {
+        setSelectedPinId(null);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('ピンの削除に失敗しました');
+      }
+    }
+  };
+
   // グローバルな pinClick イベントを処理
   useEffect(() => {
     const handleGlobalPinClick = (e: Event) => {
       const customEvent = e as CustomEvent<Pin>;
       if (customEvent.detail) {
-        // ピンクリックイベントを処理
         handlePinClick(customEvent.detail);
       }
     };
@@ -327,82 +347,43 @@ function PublicEditContent() {
     return () => {
       window.removeEventListener('pinClick', handleGlobalPinClick);
     };
-  }, [selectedPinId, floors]); // 依存配列を更新
+  }, [selectedPinId, floors]);
 
-  // ピン一覧からピンをクリックしたときの処理
-  const handlePinListClick = (pin: Pin) => {
-    handlePinClick(pin);
-  };
-
-  // ピンの編集を開始
-  const handleEditPin = (pin: Pin) => {
-    // 自分が作成したピンのみ編集可能
-    if (editorInfo && pin.editor_id === editorInfo.id) {
-      setEditingPin(pin);
-      setIsEditModalOpen(true);
-    }
-  };
-
-  // ピンの更新
-  const updatePin = async (updatedPin: Pin) => {
-    if (!editorInfo) return;
-
-    try {
-      const result = await updatePublicPin({
-        pinId: updatedPin.id,
-        title: updatedPin.title,
-        description: updatedPin.description,
-        editorId: editorInfo.id,
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'ピンの更新に失敗しました');
+  // ピン編集・削除イベント処理
+  useEffect(() => {
+    // ピン編集イベント
+    const handleEditPin = (e: Event) => {
+      const customEvent = e as CustomEvent<Pin>;
+      if (customEvent.detail) {
+        const pin = customEvent.detail;
+        if (editorId && pin.editor_id === editorId) {
+          setEditingPin(pin);
+          setIsEditModalOpen(true);
+        }
       }
+    };
 
-      // ピンリストを更新
-      setPins(pins.map((pin) => (pin.id === result.pin.id ? result.pin : pin)));
-
-      // モーダルを閉じる
-      setIsEditModalOpen(false);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'ピンの更新に失敗しました');
-    }
-  };
-
-  // ピンの削除
-  const deletePin = async (pin: Pin) => {
-    if (!editorInfo) return;
-
-    try {
-      // 自分が作成したピンのみ削除可能
-      if (pin.editor_id !== editorInfo.id) {
-        throw new Error('このピンを削除する権限がありません');
+    // ピン削除イベント
+    const handleDeletePin = (e: Event) => {
+      const customEvent = e as CustomEvent<Pin>;
+      if (customEvent.detail) {
+        deletePinHandler(customEvent.detail);
       }
+    };
 
-      // UIから先に削除（楽観的UI更新）
-      setPins((prevPins) => prevPins.filter((p) => p.id !== pin.id));
+    // イベントリスナーを追加
+    window.addEventListener('editPin', handleEditPin);
+    window.addEventListener('deletePin', handleDeletePin);
 
-      // 選択中のピンだった場合は選択を解除
-      if (selectedPinId === pin.id) {
-        setSelectedPinId(null);
-      }
+    // クリーンアップ
+    return () => {
+      window.removeEventListener('editPin', handleEditPin);
+      window.removeEventListener('deletePin', handleDeletePin);
+    };
+  }, [editorId]);
 
-      // APIリクエスト
-      const result = await deletePublicPin({
-        pinId: pin.id,
-        editorId: editorInfo.id,
-      });
-
-      if (!result.success) {
-        throw new Error(result.error || 'ピンの削除に失敗しました');
-      }
-    } catch (error) {
-      // エラー時のメッセージ表示
-      setError(error instanceof Error ? error.message : 'ピンの削除に失敗しました');
-    }
-  };
-
-  if (loading) {
+  // ロード中表示
+  if (isLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingIndicator message="読み込み中..." isFullScreen={false} />
@@ -410,6 +391,7 @@ function PublicEditContent() {
     );
   }
 
+  // エラー表示
   if (error || !mapData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -447,7 +429,7 @@ function PublicEditContent() {
             {mapData.description && <p className="text-gray-600">{mapData.description}</p>}
           </div>
           <div className="flex justify-between flex-wrap gap-2">
-            {editorInfo ? (
+            {editorNickname ? (
               <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -463,7 +445,7 @@ function PublicEditContent() {
                     d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                   />
                 </svg>
-                {editorInfo.nickname}で編集中
+                {editorNickname}で編集中
               </div>
             ) : (
               <button
@@ -545,7 +527,7 @@ function PublicEditContent() {
 
               {/* アクションボタン */}
               <div className="space-y-3">
-                {editorInfo && (
+                {editorId && (
                   <button
                     onClick={toggleAddPinMode}
                     className={`w-full px-4 py-2 rounded-md transition-colors ${
@@ -588,22 +570,22 @@ function PublicEditContent() {
                           floors={floors}
                           containerRef={normalViewRef}
                           isPublicEdit={true}
-                          currentEditorId={editorInfo?.id || null}
+                          currentEditorId={editorId}
                           isSelected={selectedPinId === pin.id}
                           onEditPin={handleEditPin}
-                          onDeletePin={deletePin}
+                          onDeletePin={deletePinHandler}
                         />
                       ))}
                 </div>
               </div>
               {/* ピン一覧 */}
-              <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="mt-6">
                 <h2 className="text-lg font-semibold mb-4 text-gray-700">ピン一覧</h2>
                 <PinList
                   pins={pins}
                   floors={floors}
                   activeFloor={activeFloor?.id || null}
-                  onPinClick={handlePinListClick}
+                  onPinClick={handlePinClick}
                   selectedPinId={selectedPinId}
                 />
               </div>
@@ -616,7 +598,7 @@ function PublicEditContent() {
       <ImprovedModal
         isOpen={showNicknameModal}
         onClose={() => {
-          if (editorInfo) {
+          if (editorId) {
             setShowNicknameModal(false);
           }
         }}
@@ -643,10 +625,10 @@ function PublicEditContent() {
           </div>
           <button
             onClick={registerEditor}
-            disabled={!nickName.trim() || loading}
+            disabled={!nickName.trim() || isRegistering}
             className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed"
           >
-            {loading ? '処理中...' : '編集を始める'}
+            {isRegistering ? '処理中...' : '編集を始める'}
           </button>
         </div>
       </ImprovedModal>
@@ -693,9 +675,9 @@ function PublicEditContent() {
           <button
             onClick={savePin}
             className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            disabled={!newPinInfo.title.trim()}
+            disabled={!newPinInfo.title.trim() || isPinAdding}
           >
-            保存
+            {isPinAdding ? '保存中...' : '保存'}
           </button>
         </div>
       </ImprovedModal>
@@ -742,7 +724,7 @@ function PublicEditContent() {
                 キャンセル
               </button>
               <button
-                onClick={() => updatePin(editingPin)}
+                onClick={updatePinHandler}
                 className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 disabled={!editingPin.title.trim()}
               >

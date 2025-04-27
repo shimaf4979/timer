@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx - ダッシュボードページの改良版
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,93 +5,54 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
-import { deleteMapWithRetry } from '@/utils/deleteHandlers';
+import { useUIStore } from '@/lib/store';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MapData } from '@/types/map-types';
 
-type Map = {
-  id: string;
-  map_id: string;
-  title: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-  is_publicly_editable: boolean;
-};
+// マップ一覧取得フック
+const useMaps = () => {
+  const { setError } = useUIStore();
 
-
-export default function Dashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [maps, setMaps] = useState<Map[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  // const [newMap, setNewMap] = useState({
-  //   map_id: '',
-  //   title: '',
-  //   description: '',
-  // });
-  
-  // 削除確認モーダル用の状態
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [mapToDelete, setMapToDelete] = useState<Map | null>(null);
-  const [deleteInProgress, setDeleteInProgress] = useState(false);
-
-
-    // マップ作成フォームを更新
-    const [newMap, setNewMap] = useState({
-      map_id: '',
-      title: '',
-      description: '',
-      is_publicly_editable: false, // 公開編集フラグを追加
-    });
-    
-  useEffect(() => {
-    if (status === 'loading') return;
-
-    // 非認証ユーザーはログインページへリダイレクト
-    if (status === 'unauthenticated') {
-      router.push('/login');
-      return;
-    }
-
-    // マップ一覧を取得
-    fetchMaps();
-  }, [session, status, router]);
-
-  const fetchMaps = async () => {
-    setLoading(true);
-    try {
+  const result = useQuery({
+    queryKey: ['maps'],
+    queryFn: async (): Promise<MapData[]> => {
       const response = await fetch('/api/maps');
       if (!response.ok) {
-        throw new Error('マップの取得に失敗しました');
+        const data = await response.json();
+        throw new Error(data.error || 'マップの取得に失敗しました');
       }
-      const data = await response.json();
-      setMaps(data);
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('エラーが発生しました');
-      }
-    } finally {
-      setLoading(false);
+      return response.json();
+    },
+    staleTime: 60 * 1000, // 1分
+  });
+
+  useEffect(() => {
+    if (result.error) {
+      setError((result.error as Error).message);
     }
-  };
+  }, [result.error, setError]);
 
-  // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  //   const { name, value } = e.target;
-  //   setNewMap({ ...newMap, [name]: value });
-  // };
+  return result;
+};
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
+// マップ作成フック
+const useCreateMap = () => {
+  const queryClient = useQueryClient();
+  const { setError, addNotification } = useUIStore();
+
+  return useMutation({
+    mutationFn: async (mapData: {
+      map_id: string;
+      title: string;
+      description: string;
+      is_publicly_editable: boolean;
+    }): Promise<MapData> => {
       const response = await fetch('/api/maps', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newMap),
+        body: JSON.stringify(mapData),
       });
 
       if (!response.ok) {
@@ -100,82 +60,134 @@ export default function Dashboard() {
         throw new Error(data.error || 'マップの作成に失敗しました');
       }
 
-      // 成功したら入力フォームをリセットしてマップ一覧を更新
-      setNewMap({ 
-        map_id: '', 
-        title: '', 
-        description: '', 
-        is_publicly_editable: false 
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maps'] });
+      addNotification({
+        message: 'マップを作成しました',
+        type: 'success',
       });
-      setShowCreateForm(false);
-      fetchMaps();
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('エラーが発生しました');
+    },
+    onError: (error: Error) => {
+      setError(error.message);
+    },
+  });
+};
+
+// マップ削除フック
+const useDeleteMap = () => {
+  const queryClient = useQueryClient();
+  const { setError, addNotification } = useUIStore();
+
+  return useMutation({
+    mutationFn: async (mapId: string): Promise<void> => {
+      const response = await fetch(`/api/maps/${mapId}`, {
+        method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache, no-store',
+          Pragma: 'no-cache',
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'マップの削除に失敗しました');
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['maps'] });
+      addNotification({
+        message: 'マップを削除しました',
+        type: 'success',
+      });
+    },
+    onError: (error: Error) => {
+      setError(error.message);
+    },
+  });
+};
+
+export default function Dashboard() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { error } = useUIStore();
+
+  // TanStack Query フック
+  const { data: maps = [], isLoading } = useMaps();
+  const createMapMutation = useCreateMap();
+  const deleteMapMutation = useDeleteMap();
+
+  // ローカル状態
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newMap, setNewMap] = useState({
+    map_id: '',
+    title: '',
+    description: '',
+    is_publicly_editable: false,
+  });
+
+  // 削除確認モーダー用の状態
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [mapToDelete, setMapToDelete] = useState<MapData | null>(null);
+
+  // 非認証ユーザーはログインページへリダイレクト
+  if (status === 'unauthenticated') {
+    router.push('/login');
+    return null;
+  }
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const target = e.target as HTMLInputElement;
+      setNewMap({ ...newMap, [name]: target.checked });
+    } else {
+      setNewMap({ ...newMap, [name]: value });
     }
   };
 
-  // 削除確認モーダルを表示
-  const openDeleteModal = (map: Map) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      await createMapMutation.mutateAsync(newMap);
+
+      // 成功したら入力フォームをリセット
+      setNewMap({
+        map_id: '',
+        title: '',
+        description: '',
+        is_publicly_editable: false,
+      });
+      setShowCreateForm(false);
+    } catch (err) {
+      console.error('マップ作成エラー:', err);
+    }
+  };
+
+  // 削除確認モーダーを表示
+  const openDeleteModal = (map: MapData) => {
     setMapToDelete(map);
     setDeleteModalOpen(true);
   };
 
   // 実際の削除処理
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!mapToDelete) return;
-    
-    setDeleteInProgress(true);
-    
-    // 削除ハンドラを使用
-    deleteMapWithRetry(
-      mapToDelete.id,
-      () => {
-        // 成功時：マップ一覧から削除したマップを除外
-        setMaps(maps.filter(m => m.id !== mapToDelete.id));
-        setDeleteModalOpen(false);
-        setMapToDelete(null);
-        setDeleteInProgress(false);
-        
-        // 成功メッセージを表示（一時的なトースト通知）
-        const notification = document.createElement('div');
-        notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
-        notification.textContent = 'マップを削除しました';
-        document.body.appendChild(notification);
-        
-        // 3秒後に通知を削除
-        setTimeout(() => {
-          notification.remove();
-        }, 3000);
-      },
-      (error) => {
-        // エラー時
-        setError(error.message);
-        setDeleteInProgress(false);
-        // モーダルは閉じない（再試行できるように）
-      }
-    );
+
+    try {
+      await deleteMapMutation.mutateAsync(mapToDelete.id);
+      setDeleteModalOpen(false);
+      setMapToDelete(null);
+    } catch (err) {
+      console.error('マップ削除エラー:', err);
+    }
   };
 
-
-
-// ハンドラーを変更
-const handleInputChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-) => {
-  const { name, value, type } = e.target;
-  if (type === 'checkbox') {
-    const target = e.target as HTMLInputElement;
-    setNewMap({ ...newMap, [name]: target.checked });
-  } else {
-    setNewMap({ ...newMap, [name]: value });
-  }
-};
-
-  if (loading && status !== 'loading') {
+  if (isLoading && status !== 'loading') {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-2xl font-bold mb-6">マイマップ</h1>
@@ -240,7 +252,10 @@ const handleInputChange = (
               </p>
             </div>
             <div className="mb-4">
-              <label htmlFor="is_publicly_editable" className="flex items-center text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="is_publicly_editable"
+                className="flex items-center text-sm font-medium text-gray-700 mb-1"
+              >
                 <input
                   type="checkbox"
                   id="is_publicly_editable"
@@ -288,8 +303,9 @@ const handleInputChange = (
               <button
                 type="submit"
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                disabled={createMapMutation.isPending}
               >
-                作成
+                {createMapMutation.isPending ? '作成中...' : '作成'}
               </button>
             </div>
           </form>
@@ -299,53 +315,59 @@ const handleInputChange = (
       {/* マップ一覧 */}
       {maps.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-{maps.map((map) => (
-  <div key={map.id} className="bg-white shadow-md rounded-lg overflow-hidden">
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-2">{map.title}</h2>
-      <p className="text-gray-600 mb-4 text-sm">{map.description || '説明なし'}</p>
-      <div className="text-gray-500 text-xs mb-4">
-        <p>ID: {map.map_id}</p>
-        <p>作成日: {new Date(map.created_at).toLocaleDateString()}</p>
-        <p>更新日: {new Date(map.updated_at).toLocaleDateString()}</p>
-        {map.is_publicly_editable && (
-          <p className="text-green-600 font-medium">※ 公開編集モード有効</p>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2 text-center">
-        <Link
-          href={`/maps/${map.map_id}/edit`}
-          className="px- py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm flex-1 text-center"
-        >
-          編集
-        </Link>
-        {map.is_publicly_editable && (
-          <Link
-            href={`/public-edit?id=${map.map_id}`}
-            target="_blank"
-            className="px-2 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-xs sm:text-sm flex-1 text-center"
-          >
-            公開編集
-          </Link>
-        )}
-        <Link
-          href={`/viewer?id=${map.map_id}`}
-          target="_blank"
-          className="px-2 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm flex-1 text-center"
-        >
-          閲覧
-        </Link>
-        <button
-          onClick={() => openDeleteModal(map)}
-          className="px-2 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs sm:text-sm  flex-1 text-center cursor-pointer"
-          data-map-id={map.id}
-        >
-          削除
-        </button>
-      </div>
-    </div>
-  </div>
-))}
+          {maps.map((map) => (
+            <div key={map.id} className="bg-white shadow-md rounded-lg overflow-hidden">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold mb-2">{map.title}</h2>
+                <p className="text-gray-600 mb-4 text-sm">{map.description || '説明なし'}</p>
+                <div className="text-gray-500 text-xs mb-4">
+                  <p>ID: {map.map_id}</p>
+                  <p>
+                    作成日:{' '}
+                    {map.created_at ? new Date(map.created_at).toLocaleDateString() : '不明'}
+                  </p>
+                  <p>
+                    更新日:{' '}
+                    {map.updated_at ? new Date(map.updated_at).toLocaleDateString() : '不明'}
+                  </p>
+                  {map.is_publicly_editable && (
+                    <p className="text-green-600 font-medium">※ 公開編集モード有効</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 text-center">
+                  <Link
+                    href={`/maps/${map.map_id}/edit`}
+                    className="px-2 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs sm:text-sm flex-1 text-center"
+                  >
+                    編集
+                  </Link>
+                  {map.is_publicly_editable && (
+                    <Link
+                      href={`/public-edit?id=${map.map_id}`}
+                      target="_blank"
+                      className="px-2 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-xs sm:text-sm flex-1 text-center"
+                    >
+                      公開編集
+                    </Link>
+                  )}
+                  <Link
+                    href={`/viewer?id=${map.map_id}`}
+                    target="_blank"
+                    className="px-2 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs sm:text-sm flex-1 text-center"
+                  >
+                    閲覧
+                  </Link>
+                  <button
+                    onClick={() => openDeleteModal(map)}
+                    className="px-2 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs sm:text-sm flex-1 text-center cursor-pointer"
+                    data-map-id={map.id}
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="bg-white shadow-md rounded-lg p-6 text-center">
@@ -354,12 +376,12 @@ const handleInputChange = (
           </p>
         </div>
       )}
-      
+
       {/* 削除確認モーダル */}
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}
         onClose={() => {
-          if (!deleteInProgress) {
+          if (!deleteMapMutation.isPending) {
             setDeleteModalOpen(false);
             setMapToDelete(null);
           }

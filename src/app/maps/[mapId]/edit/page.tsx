@@ -1,11 +1,9 @@
-// app/maps/[mapId]/edit/page.tsx
 'use client';
 
-import { useState, useEffect, useRef, useCallback, RefObject } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapData, Floor, Pin } from '@/types/map-types';
 import PinList from '@/components/PinList';
 import ImprovedModal from '@/components/ImprovedModal';
 import PinInfo from '@/components/PinInfo';
@@ -15,26 +13,56 @@ import LoadingIndicator from '@/components/LoadingIndicator';
 import ImageUploader from '@/components/ImageUploader';
 import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 import { getExactImagePosition } from '@/utils/imageExactPositioning';
-import {
-  deletePinWithRetry,
-  deleteFloorWithRetry,
-  deleteMapWithRetry,
-} from '@/utils/deleteHandlers';
 import EnhancedPinViewer from '@/components/EnhancedPinViewer';
+import {
+  useMapData,
+  useFloors,
+  usePins,
+  useAddFloor,
+  useDeleteFloor,
+  useAddPin,
+  useUpdatePin,
+  useDeletePin,
+  useUploadFloorImage,
+} from '@/lib/api-hooks';
+import { useUIStore, useMapEditStore } from '@/lib/store';
+import { Pin, Floor } from '@/types/map-types';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function MapEditPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
   const mapId = params.mapId as string;
+  const queryClient = useQueryClient();
 
-  // ステート
-  const [mapData, setMapData] = useState<MapData | null>(null);
-  const [floors, setFloors] = useState<Floor[]>([]);
-  const [pins, setPins] = useState<Pin[]>([]);
+  // Zustand ストアから状態と操作を取得
+  const { loading, error, setLoading, setError } = useUIStore();
+  const {
+    selectedFloorId,
+    isAddingPin,
+    newPinPosition,
+    setSelectedFloorId,
+    setIsAddingPin,
+    setNewPinPosition,
+    resetPinEditing,
+  } = useMapEditStore();
+
+  // TanStack Query フック
+  const { data: mapData, isLoading: isMapLoading } = useMapData(mapId);
+  const { data: floors = [], isLoading: isFloorsLoading } = useFloors(mapId);
+  const floorIds = floors.map((floor) => floor.id);
+  const { data: pins = [], isLoading: isPinsLoading } = usePins(floorIds);
+
+  // ミューテーションフック
+  const addFloorMutation = useAddFloor(mapId);
+  const deleteFloorMutation = useDeleteFloor(mapId);
+  const addPinMutation = useAddPin();
+  const updatePinMutation = useUpdatePin();
+  const deletePinMutation = useDeletePin();
+
+  // ローカル状態
   const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
-  const [isAddingPin, setIsAddingPin] = useState(false);
-  const [newPinPosition, setNewPinPosition] = useState({ x: 0, y: 0 });
   const [newPinInfo, setNewPinInfo] = useState({ title: '', description: '' });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
@@ -47,17 +75,8 @@ export default function MapEditPage() {
   const [showModalArrows, setShowModalArrows] = useState(true);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [apiStatus, setApiStatus] = useState<{
-    loading: boolean;
-    message: string;
-    error: string | null;
-  }>({
-    loading: false,
-    message: '',
-    error: null,
-  });
+  const [frontFloorIndex, setFrontFloorIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
   // 削除確認モーダルの状態
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
@@ -72,23 +91,31 @@ export default function MapEditPage() {
     title: '',
   });
 
+  // マップ情報編集状態
+  const [editingMapInfo, setEditingMapInfo] = useState(false);
+  const [mapInfo, setMapInfo] = useState({
+    title: '',
+    description: '',
+    is_publicly_editable: false,
+  });
+
   // refs
   const normalViewRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // フロントに表示するエリアのインデックスを変更
-  const [frontFloorIndex, setFrontFloorIndex] = useState(0);
+  // スマホ検出のためのuseEffect
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
 
-  // 次の階を前面に表示
-  const showNextFloor = () => {
-    if (floors.length === 0) return;
-    setFrontFloorIndex((prevIndex) => (prevIndex + 1) % floors.length);
-  };
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
 
-  // 前の階を前面に表示
-  const showPrevFloor = () => {
-    if (floors.length === 0) return;
-    setFrontFloorIndex((prevIndex) => (prevIndex - 1 + floors.length) % floors.length);
-  };
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
 
   // モーダル表示時は矢印を非表示にする
   useEffect(() => {
@@ -96,6 +123,35 @@ export default function MapEditPage() {
       !(isModalOpen || isEditModalOpen || isFormOpen || deleteConfirmState.isOpen)
     );
   }, [isModalOpen, isEditModalOpen, isFormOpen, deleteConfirmState.isOpen]);
+
+  // 認証状態の確認とリダイレクト
+  useEffect(() => {
+    if (status === 'loading') return;
+
+    // 非認証ユーザーはログインページへリダイレクト
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  // マップデータ取得後に編集用の状態を初期化
+  useEffect(() => {
+    if (mapData) {
+      setMapInfo({
+        title: mapData.title,
+        description: mapData.description || '',
+        is_publicly_editable: mapData.is_publicly_editable || false,
+      });
+    }
+  }, [mapData]);
+
+  // フロアデータの初期化
+  useEffect(() => {
+    if (floors.length > 0 && !activeFloor) {
+      setActiveFloor(floors[0]);
+      setSelectedFloorId(floors[0].id);
+    }
+  }, [floors, activeFloor, setSelectedFloorId]);
 
   // 画像の読み込みイベントリスナー
   useEffect(() => {
@@ -120,189 +176,27 @@ export default function MapEditPage() {
     };
   }, []);
 
-  // 初期データ取得
-  useEffect(() => {
-    if (status === 'loading') return;
-
-    // 非認証ユーザーはログインページへリダイレクト
-    if (status === 'unauthenticated') {
-      router.push('/login');
-      return;
-    }
-
-    // マップデータの取得
-    fetchMapData();
-  }, [status, router, mapId]);
-
-  // API操作のラッパー関数 - 状態を管理して非同期処理を行う
-  const executeApiCall = async (
-    apiCall: () => Promise<any>,
-    loadingMessage: string,
-    successCallback?: (data: any) => void
-  ) => {
-    setApiStatus({
-      loading: true,
-      message: loadingMessage,
-      error: null,
-    });
-
-    try {
-      const result = await apiCall();
-
-      // 成功時の処理
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
-
-      if (successCallback && result) {
-        successCallback(result);
-      }
-
-      return result;
-    } catch (error) {
-      // エラー時の処理
-      let errorMessage = 'エラーが発生しました';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: errorMessage,
-      });
-
-      // 3秒後にエラーメッセージをクリア
-      setTimeout(() => {
-        setApiStatus((prevState) => ({
-          ...prevState,
-          error: null,
-        }));
-      }, 3000);
-
-      throw error;
-    }
-  };
-
-  // マップデータを取得
-  const fetchMapData = async () => {
-    setLoading(true);
-    try {
-      // マップ情報を取得
-      const mapResponse = await fetch(`/api/maps/${mapId}`);
-      if (!mapResponse.ok) {
-        throw new Error('マップの取得に失敗しました');
-      }
-      const mapData = await mapResponse.json();
-      setMapData(mapData);
-
-      // エリア情報を取得
-      const floorsResponse = await fetch(`/api/maps/${mapId}/floors`);
-      if (!floorsResponse.ok) {
-        throw new Error('エリアの取得に失敗しました');
-      }
-      const floorsData = await floorsResponse.json();
-      setFloors(floorsData);
-
-      // 最初のエリアをアクティブに設定
-      if (floorsData.length > 0) {
-        setActiveFloor(floorsData[0]);
-      }
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError('データの取得中にエラーが発生しました');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 全ピンを取得する関数
-  const fetchAllPins = useCallback(async () => {
+  // 次の階を前面に表示
+  const showNextFloor = () => {
     if (floors.length === 0) return;
+    setFrontFloorIndex((prevIndex) => (prevIndex + 1) % floors.length);
+  };
 
-    setApiStatus({
-      loading: true,
-      message: 'ピンデータを読み込み中...',
-      error: null,
-    });
-
-    try {
-      // マップに関連する全てのエリアのIDを取得
-      const floorIds = floors.map((floor) => floor.id);
-
-      // すべてのエリアのピンを同時に取得
-      const requests = floorIds.map((floorId) =>
-        fetch(`/api/floors/${floorId}/pins`).then((response) => {
-          if (!response.ok) {
-            throw new Error(`フロア ${floorId} のピン取得に失敗しました`);
-          }
-          return response.json();
-        })
-      );
-
-      // すべてのリクエストを並列実行
-      const results = await Promise.allSettled(requests);
-
-      // 成功したリクエストの結果を結合
-      const pins: Pin[] = [];
-      results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-          pins.push(...result.value);
-        } else {
-          console.error(`フロア ${floorIds[index]} のピン取得エラー:`, result.reason);
-        }
-      });
-
-      setPins(pins);
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
-    } catch (error) {
-      console.error('全ピンの取得エラー:', error);
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: error instanceof Error ? error.message : 'ピンの取得に失敗しました',
-      });
-    }
-  }, [floors]);
-
-  // フロアデータ取得後に全ピンを取得
-  useEffect(() => {
-    if (floors.length > 0) {
-      fetchAllPins();
-    }
-  }, [floors, fetchAllPins]);
+  // 前の階を前面に表示
+  const showPrevFloor = () => {
+    if (floors.length === 0) return;
+    setFrontFloorIndex((prevIndex) => (prevIndex - 1 + floors.length) % floors.length);
+  };
 
   // アクティブなエリアを変更
-  // アクティブなエリアを変更する関数 (デバウンス適用)
-  const debounce = (func: Function, wait: number) => {
-    let timeout: NodeJS.Timeout | null = null;
-    return function (...args: any[]) {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
-    };
-  };
-  const handleFloorChange = debounce((floor: Floor) => {
+  const handleFloorChange = (floor: Floor) => {
     // 同じ階層を再選択した場合は何もしない
     if (activeFloor?.id === floor.id) return;
 
     // 階層を変更
     setActiveFloor(floor);
-  }, 10); // 300msのデバウンスを適用
+    setSelectedFloorId(floor.id);
+  };
 
   // エリアの追加
   const handleAddFloor = async (e: React.FormEvent) => {
@@ -310,57 +204,16 @@ export default function MapEditPage() {
     if (!mapData) return;
 
     try {
-      setApiStatus({
-        loading: true,
-        message: 'エリアを追加中...',
-        error: null,
-      });
+      await addFloorMutation.mutateAsync(newFloor);
 
-      const response = await fetch(`/api/maps/${mapId}/floors`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newFloor),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'エリアの追加に失敗しました');
-      }
-
-      const newFloorData = await response.json();
-
-      // エリアリストを更新し、新しいエリアをアクティブに設定
-      setFloors([...floors, newFloorData]);
-      setActiveFloor(newFloorData);
+      // フォームをリセット
       setNewFloor({
         floor_number: floors.length > 0 ? Math.max(...floors.map((f) => f.floor_number)) + 1 : 1,
         name: '',
       });
       setShowAddFloorForm(false);
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-        setApiStatus({
-          loading: false,
-          message: '',
-          error: error.message,
-        });
-      } else {
-        setError('エリアの追加に失敗しました');
-        setApiStatus({
-          loading: false,
-          message: '',
-          error: 'エリアの追加に失敗しました',
-        });
-      }
+      console.error('エリア追加エラー:', error);
     }
   };
 
@@ -400,130 +253,33 @@ export default function MapEditPage() {
   const confirmDelete = async () => {
     if (!deleteConfirmState.type) return;
 
-    const { type, id, title } = deleteConfirmState;
-
-    setApiStatus({
-      loading: true,
-      message: `${type === 'pin' ? 'ピン' : 'エリア'}を削除しています...`,
-      error: null,
-    });
+    const { type, id } = deleteConfirmState;
 
     try {
       if (type === 'pin') {
-        // ピン削除ハンドラーを使用
-        await deletePinWithRetry(
-          id,
-          () => {
-            // 成功時
-            setPins(pins.filter((pin) => pin.id !== id));
-            setIsModalOpen(false);
-            setIsEditModalOpen(false);
-            setSelectedPin(null);
+        await deletePinMutation.mutateAsync(id);
 
-            setApiStatus({
-              loading: false,
-              message: '',
-              error: null,
-            });
-
-            // 成功通知
-            const notification = document.createElement('div');
-            notification.className =
-              'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
-            notification.textContent = 'ピンを削除しました';
-            document.body.appendChild(notification);
-
-            // 3秒後に通知を削除
-            setTimeout(() => {
-              notification.remove();
-            }, 3000);
-          },
-          (error) => {
-            // エラー時
-            setApiStatus({
-              loading: false,
-              message: '',
-              error: error.message,
-            });
-          }
-        );
+        // UI更新
+        setIsModalOpen(false);
+        setIsEditModalOpen(false);
+        setSelectedPin(null);
       } else if (type === 'floor') {
-        // 削除するフロアと関連ピンをバックアップ
-        const floorToDelete = floors.find((floor) => floor.id === id);
-        const relatedPins = pins.filter((pin) => pin.floor_id === id);
-
-        if (!floorToDelete) {
-          setApiStatus({
-            loading: false,
-            message: '',
-            error: '削除するエリアが見つかりません',
-          });
-          return;
-        }
-
-        // UI上でフロアと関連ピンを先に非表示（楽観的UI更新）
-        setFloors((prevFloors) => prevFloors.filter((floor) => floor.id !== id));
-        setPins((prevPins) => prevPins.filter((pin) => pin.floor_id !== id));
+        await deleteFloorMutation.mutateAsync(id);
 
         // 削除したエリアがアクティブだった場合、別のエリアをアクティブに設定
         if (activeFloor?.id === id) {
           const updatedFloors = floors.filter((floor) => floor.id !== id);
           if (updatedFloors.length > 0) {
             setActiveFloor(updatedFloors[0]);
+            setSelectedFloorId(updatedFloors[0].id);
           } else {
             setActiveFloor(null);
+            setSelectedFloorId(null);
           }
         }
-
-        // フロア削除ハンドラーを使用
-        await deleteFloorWithRetry(
-          id,
-          () => {
-            // 成功時
-            setApiStatus({
-              loading: false,
-              message: '',
-              error: null,
-            });
-
-            // 成功通知
-            const notification = document.createElement('div');
-            notification.className =
-              'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
-            notification.textContent = 'エリアを削除しました';
-            document.body.appendChild(notification);
-
-            // 3秒後に通知を削除
-            setTimeout(() => {
-              notification.remove();
-            }, 3000);
-          },
-          (error) => {
-            // エラー時
-            setApiStatus({
-              loading: false,
-              message: '',
-              error: error.message,
-            });
-
-            // 削除に失敗した場合、エリアとピンを元に戻す
-            setFloors((prevFloors) => [...prevFloors, floorToDelete]);
-            setPins((prevPins) => [...prevPins, ...relatedPins]);
-
-            // アクティブフロアも元に戻す
-            if (activeFloor === null && floorToDelete) {
-              setActiveFloor(floorToDelete);
-            }
-          }
-        );
       }
     } catch (error) {
       console.error('削除処理エラー:', error);
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: error instanceof Error ? error.message : '削除に失敗しました',
-      });
     } finally {
       // モーダルを閉じる
       cancelDelete();
@@ -535,33 +291,16 @@ export default function MapEditPage() {
     // 画像アップロードが完了した時に呼ばれるコールバック
     try {
       // エリアリストを更新
-      setFloors((prevFloors) =>
-        prevFloors.map((floor) =>
-          floor.id === floorId ? { ...floor, image_url: imageUrl } : floor
-        )
+      const updatedFloors = floors.map((floor) =>
+        floor.id === floorId ? { ...floor, image_url: imageUrl } : floor
       );
 
       // アクティブなエリアが更新された場合、アクティブなエリアも更新
       if (activeFloor?.id === floorId) {
         setActiveFloor((prevFloor) => (prevFloor ? { ...prevFloor, image_url: imageUrl } : null));
       }
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
     } catch (error) {
-      let errorMessage = '画像の処理に失敗しました';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: errorMessage,
-      });
+      console.error('画像の処理に失敗しました:', error);
     }
   };
 
@@ -585,7 +324,10 @@ export default function MapEditPage() {
       const containerRef = normalViewRef.current ? normalViewRef : { current: e.currentTarget };
 
       // 正規化された位置情報を取得
-      const normalizedPosition = getExactImagePosition(e, containerRef as RefObject<HTMLElement>);
+      const normalizedPosition = getExactImagePosition(
+        e,
+        containerRef as React.RefObject<HTMLElement>
+      );
       if (!normalizedPosition) return;
 
       // 位置情報を更新
@@ -604,66 +346,20 @@ export default function MapEditPage() {
     if (!activeFloor || newPinInfo.title.trim() === '') return;
 
     try {
-      setApiStatus({
-        loading: true,
-        message: 'ピンを追加中...',
-        error: null,
-      });
-
-      // 一時的なピンをUIに追加（楽観的UI更新）
-      const tempId = `temp-${Date.now()}`;
-      const tempPin: Pin = {
-        id: tempId,
+      await addPinMutation.mutateAsync({
         floor_id: activeFloor.id,
         title: newPinInfo.title,
         description: newPinInfo.description,
         x_position: newPinPosition.x,
         y_position: newPinPosition.y,
-        _temp: true,
-      };
+      });
 
-      setPins((prevPins) => [...prevPins, tempPin]);
+      // フォームをリセット
       setNewPinInfo({ title: '', description: '' });
       setIsFormOpen(false);
-
-      // APIリクエスト
-      const response = await fetch(`/api/floors/${activeFloor.id}/pins`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: newPinInfo.title,
-          description: newPinInfo.description,
-          x_position: newPinPosition.x,
-          y_position: newPinPosition.y,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'ピンの追加に失敗しました');
-      }
-
-      const newPin = await response.json();
-
-      // 一時ピンを実際のピンに置き換え
-      setPins((prevPins) => prevPins.filter((pin) => !pin._temp).concat(newPin));
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
+      setIsAddingPin(false);
     } catch (error) {
-      // 一時ピンを削除（失敗時）
-      setPins((prevPins) => prevPins.filter((pin) => !pin._temp));
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: error instanceof Error ? error.message : 'ピンの追加に失敗しました',
-      });
+      console.error('ピン追加エラー:', error);
     }
   };
 
@@ -681,63 +377,25 @@ export default function MapEditPage() {
   };
 
   // ピンの更新
-  const updatePin = async (updatedPin: Pin) => {
+  const updatePin = async () => {
+    if (!editingPin) return;
+
     try {
-      setApiStatus({
-        loading: true,
-        message: 'ピンを更新中...',
-        error: null,
+      await updatePinMutation.mutateAsync({
+        id: editingPin.id,
+        title: editingPin.title,
+        description: editingPin.description,
       });
-
-      const response = await fetch(`/api/pins/${updatedPin.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: updatedPin.title,
-          description: updatedPin.description,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'ピンの更新に失敗しました');
-      }
-
-      const pinnData = await response.json();
-
-      // ピンリストを更新
-      setPins(pins.map((pin) => (pin.id === pinnData.id ? pinnData : pin)));
 
       // モーダルを閉じる
       setIsEditModalOpen(false);
-      setSelectedPin(null);
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
+      setEditingPin(null);
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-        setApiStatus({
-          loading: false,
-          message: '',
-          error: error.message,
-        });
-      } else {
-        setError('ピンの更新に失敗しました');
-        setApiStatus({
-          loading: false,
-          message: '',
-          error: 'ピンの更新に失敗しました',
-        });
-      }
+      console.error('ピン更新エラー:', error);
     }
   };
 
+  // グローバルPinClickイベントのハンドラー
   useEffect(() => {
     const handleGlobalPinClick = (e: Event) => {
       const customEvent = e as CustomEvent<Pin>;
@@ -754,6 +412,7 @@ export default function MapEditPage() {
     };
   }, []);
 
+  // 3Dビューでのフロアクリックハンドラー
   const handleFloorClickIn3D = (
     e: React.MouseEvent<HTMLDivElement> & { exactPosition?: { x: number; y: number } },
     floorId: string
@@ -766,6 +425,7 @@ export default function MapEditPage() {
     }
   };
 
+  // ピン編集・削除のグローバルイベントハンドラー
   useEffect(() => {
     // ピン編集イベント
     const handleEditPin = (e: Event) => {
@@ -802,30 +462,10 @@ export default function MapEditPage() {
     };
   }, []);
 
-  const [isMobile, setIsMobile] = useState(false);
-
-  // スマホ検出のためのuseEffect
-  useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 640);
-    };
-
-    checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-
-    return () => {
-      window.removeEventListener('resize', checkIfMobile);
-    };
-  }, []);
-
   // マップ情報の更新関数
   const updateMapInfo = async () => {
     try {
-      setApiStatus({
-        loading: true,
-        message: 'マップ情報を更新中...',
-        error: null,
-      });
+      setLoading(true);
 
       const response = await fetch(`/api/maps/${mapId}`, {
         method: 'PATCH',
@@ -840,42 +480,20 @@ export default function MapEditPage() {
         throw new Error(data.error || 'マップの更新に失敗しました');
       }
 
-      const updatedMap = await response.json();
-      setMapData(updatedMap);
+      await response.json();
+      // キャッシュを無効化して再フェッチします
+      queryClient.invalidateQueries({ queryKey: ['map', mapId] });
       setEditingMapInfo(false);
-
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: null,
-      });
     } catch (error) {
-      setApiStatus({
-        loading: false,
-        message: '',
-        error: error instanceof Error ? error.message : 'マップの更新に失敗しました',
-      });
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('マップの更新に失敗しました');
+      }
+    } finally {
+      setLoading(false);
     }
   };
-
-  // マップ情報編集機能を追加
-  const [editingMapInfo, setEditingMapInfo] = useState(false);
-  const [mapInfo, setMapInfo] = useState({
-    title: '',
-    description: '',
-    is_publicly_editable: false,
-  });
-
-  // マップデータ取得後に編集用の状態を初期化
-  useEffect(() => {
-    if (mapData) {
-      setMapInfo({
-        title: mapData.title,
-        description: mapData.description || '',
-        is_publicly_editable: mapData.is_publicly_editable || false,
-      });
-    }
-  }, [mapData]);
 
   // マップ情報編集フォームの入力ハンドラ
   const handleMapInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -888,8 +506,10 @@ export default function MapEditPage() {
     }
   };
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  if (loading && status !== 'loading') {
+  // ローディング中表示
+  const isLoading = isMapLoading || isFloorsLoading || isPinsLoading || loading;
+
+  if (isLoading && status !== 'loading') {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-2xl font-bold mb-6">マップ編集</h1>
@@ -904,12 +524,11 @@ export default function MapEditPage() {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-2xl font-bold mb-6">マップ編集</h1>
-        {/* <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          マップが見つかりません。
-        </div> */}
-        {/* <Link href="/dashboard" className="text-blue-600 hover:underline">
-          ダッシュボードに戻る
-        </Link> */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
       </div>
     );
   }
@@ -936,7 +555,7 @@ export default function MapEditPage() {
           </div> */}
         </div>
 
-        {apiStatus.error && (
+        {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-start">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -950,13 +569,13 @@ export default function MapEditPage() {
                 clipRule="evenodd"
               />
             </svg>
-            <span>{apiStatus.error}</span>
+            <span>{error}</span>
           </div>
         )}
 
-        {apiStatus.loading && (
+        {loading && (
           <div className="mb-4">
-            <LoadingIndicator message={apiStatus.message} isFullScreen={false} />
+            <LoadingIndicator message="処理中..." isFullScreen={false} />
           </div>
         )}
 
@@ -1040,67 +659,14 @@ export default function MapEditPage() {
                     <button
                       type="submit"
                       className="w-full px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-                      disabled={apiStatus.loading}
+                      disabled={addFloorMutation.isPending}
                     >
-                      {apiStatus.loading ? '処理中...' : '追加'}
+                      {addFloorMutation.isPending ? '処理中...' : '追加'}
                     </button>
                   </form>
                 )}
 
                 {/* エリアリスト */}
-                {/* {floors.length > 0 ? (
-              <div className="space-y-2">
-                {floors.map((floor) => (
-                  <div 
-                    key={floor.id}
-                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                      activeFloor?.id === floor.id 
-                        ? 'bg-blue-100 border-l-4 border-blue-500' 
-                        : 'bg-gray-50 hover:bg-gray-100'
-                    }`}
-                  >
-                    <div 
-                      className="flex items-center flex-grow"
-                      onClick={() => handleFloorChange(floor)}
-                    >
-                      <div className="mr-3">
-                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
-                          {floor.floor_number}
-                        </div>
-                      </div>
-                      <span>{floor.name}</span>
-                    </div>
-                    
-                    <div className="flex " onClick={(e) => e.stopPropagation()}>
-                      <ImageUploader
-                        floorId={floor.id}
-                        onUploadComplete={(imageUrl) => handleImageUpload(floor.id, imageUrl)}
-                        onUploadError={(message) => setError(message)}
-                        currentImageUrl={floor.image_url}
-                        buttonText={floor.image_url ? (isMobile ? '変更' : '画像変更') : (isMobile ? '追加' : '画像追加')}
-                        className="px-3  rounded text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeleteFloor(floor.id, floor.name);
-                        }}
-                        className=" px-2 bg-red-400 text-white rounded text-sm hover:bg-red-200 cursor-pointer"
-                        data-floor-id={floor.id}
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-4 text-gray-500">
-                エリアがありません。「エリア追加」ボタンから追加してください。
-              </div>
-            )} */}
                 {floors.length > 0 ? (
                   <div className="space-y-2">
                     {floors.map((floor) => (
@@ -1142,7 +708,7 @@ export default function MapEditPage() {
                                   ? '追加'
                                   : '画像追加'
                             }
-                            className="px-3  rounded text-sm"
+                            className="px-3 rounded text-sm"
                           />
                           <button
                             type="button"
@@ -1151,7 +717,7 @@ export default function MapEditPage() {
                               e.stopPropagation();
                               handleDeleteFloor(floor.id, floor.name);
                             }}
-                            className=" px-2 bg-red-400 text-white rounded text-sm hover:bg-red-200 cursor-pointer"
+                            className="px-2 bg-red-400 text-white rounded text-sm hover:bg-red-200 cursor-pointer"
                             data-floor-id={floor.id}
                           >
                             {isMobile ? '削除' : '削除'}
@@ -1410,9 +976,9 @@ export default function MapEditPage() {
             <button
               onClick={savePin}
               className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              disabled={apiStatus.loading}
+              disabled={addPinMutation.isPending}
             >
-              {apiStatus.loading ? '保存中...' : '保存'}
+              {addPinMutation.isPending ? '保存中...' : '保存'}
             </button>
           </div>
         </ImprovedModal>
@@ -1510,13 +1076,11 @@ export default function MapEditPage() {
                   キャンセル
                 </button>
                 <button
-                  onClick={() => {
-                    updatePin(editingPin);
-                  }}
+                  onClick={updatePin}
                   className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                  disabled={apiStatus.loading}
+                  disabled={updatePinMutation.isPending}
                 >
-                  {apiStatus.loading ? '保存中...' : '保存'}
+                  {updatePinMutation.isPending ? '保存中...' : '保存'}
                 </button>
               </div>
             </div>

@@ -1,51 +1,43 @@
-// app/viewer/page.tsx
 'use client';
 
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapData, Floor, Pin } from '@/types/map-types';
 import PinList from '@/components/PinList';
 import NormalView from '@/components/NormalView';
 import LoadingIndicator from '@/components/LoadingIndicator';
 import EnhancedPinViewer from '@/components/EnhancedPinViewer';
+import { useViewerData } from '@/lib/api-hooks';
+import { useUIStore, useMapEditStore } from '@/lib/store';
+import { Floor, Pin } from '@/types/map-types';
 
-// useSearchParamsを使用する部分を別コンポーネントに分離
+// ViewerPageの中身コンポーネント
 function ViewerContent() {
   const searchParams = useSearchParams();
   const mapId = searchParams.get('id') || '';
+  const floorId = searchParams.get('floor') || '';
 
-  const [mapData, setMapData] = useState<MapData | null>(null);
+  // Zustand ストアから状態と操作を取得
+  const { error, setError } = useUIStore();
+  const { selectedPinId, setSelectedPinId } = useMapEditStore();
+
+  // TanStack Query でデータを取得
+  const { data, isLoading, isError } = useViewerData(mapId);
+
+  // マウント時に取得したデータを整理するためのローカル状態
+  const [mapData, setMapData] = useState<any>(null);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [pins, setPins] = useState<Pin[]>([]);
   const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [showModalArrows, setShowModalArrows] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // ピン選択状態の管理
-  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
-
-  // コンテナへの参照
-  const containerRef = useRef<HTMLDivElement>(null);
-  const normalViewRef = useRef<HTMLDivElement>(null);
-
-  // フロントに表示するエリアのインデックスを変更
+  // フロントに表示するエリアのインデックス
   const [frontFloorIndex, setFrontFloorIndex] = useState(0);
 
-  // 次の階を前面に表示
-  const showNextFloor = () => {
-    if (floors.length === 0) return;
-    setFrontFloorIndex((prevIndex) => (prevIndex + 1) % floors.length);
-  };
-
-  // 前の階を前面に表示
-  const showPrevFloor = () => {
-    if (floors.length === 0) return;
-    setFrontFloorIndex((prevIndex) => (prevIndex - 1 + floors.length) % floors.length);
-  };
+  // refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const normalViewRef = useRef<HTMLDivElement>(null);
 
   // スマホ検出のためのuseEffect
   useEffect(() => {
@@ -61,81 +53,65 @@ function ViewerContent() {
     };
   }, []);
 
-  // データ読み込み
+  // 取得したデータを整理
   useEffect(() => {
-    if (!mapId) {
-      setError('マップIDが指定されていません');
-      setLoading(false);
-      return;
-    }
+    if (data) {
+      setMapData(data.map);
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setLoadingProgress(10); // 開始時の進捗表示
-
-        // APIからマップデータを取得
-        const response = await fetch(`/api/viewer/${mapId}`);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'データの取得に失敗しました');
-        }
-
-        setLoadingProgress(50); // データ取得完了
-
-        const data = await response.json();
-        console.log('API Response:', data);
-
-        // データを設定
-        setMapData(data.map);
-        setFloors(data.floors);
-
-        // ピンデータを処理（編集者情報を確認）
-        const processedPins = data.pins.map((pin: Pin) => {
-          // デバッグ用のログ
-          console.log(`Processing pin ${pin.id}, editor data:`, {
-            editor_id: pin.editor_id,
-            editor_nickname: pin.editor_nickname,
-          });
-
-          // 編集者情報がないピンにはデフォルト値を設定
-          if (!pin.editor_nickname && !pin.editor_id) {
-            return {
-              ...pin,
-              editor_nickname: '不明な編集者',
-            };
-          }
-          return pin;
-        });
-
-        setPins(processedPins);
-
-        // 最初のエリアをアクティブに設定
-        if (data.floors && data.floors.length > 0) {
+      // フロアとピンの設定
+      if (floorId) {
+        // 指定されたフロアだけをセット
+        const selectedFloor = data.floors.find((f: Floor) => f.id === floorId);
+        if (selectedFloor) {
+          setFloors([selectedFloor]);
+          setActiveFloor(selectedFloor);
+          // 選択したフロアのピンだけをフィルタリング
+          setPins(data.pins.filter((p: Pin) => p.floor_id === floorId));
+        } else {
+          // 指定されたフロアが見つからない場合は最初のフロアを表示
+          setFloors([data.floors[0]]);
           setActiveFloor(data.floors[0]);
+          setPins(data.pins.filter((p: Pin) => p.floor_id === data.floors[0].id));
         }
-
-        setLoadingProgress(70); // データ処理完了
-        setLoadingProgress(100); // 画像読み込み完了
-        setError(null);
-      } catch (error) {
-        console.error('データの取得エラー:', error);
-        setError(error instanceof Error ? error.message : 'データの取得に失敗しました');
-      } finally {
-        setLoading(false);
+      } else {
+        // フロアが指定されていない場合は最初のフロアを表示
+        if (data.floors.length > 0) {
+          setFloors(data.floors);
+          setActiveFloor(data.floors[0]);
+          setPins(data.pins);
+        } else {
+          setFloors([]);
+          setPins([]);
+        }
       }
-    };
+    }
+  }, [data, floorId]);
 
-    fetchData();
-  }, [mapId]);
+  // エラー時の処理
+  useEffect(() => {
+    if (isError) {
+      setError('データの取得に失敗しました');
+    }
+  }, [isError, setError]);
+
+  // 次の階を前面に表示
+  const showNextFloor = () => {
+    if (floors.length === 0) return;
+    setFrontFloorIndex((prevIndex) => (prevIndex + 1) % floors.length);
+  };
+
+  // 前の階を前面に表示
+  const showPrevFloor = () => {
+    if (floors.length === 0) return;
+    setFrontFloorIndex((prevIndex) => (prevIndex - 1 + floors.length) % floors.length);
+  };
 
   // エリアの変更
   const handleFloorChange = (floor: Floor) => {
     setActiveFloor(floor);
   };
 
-  // ピンをクリックしたときの処理（ピン本体またはピン一覧からのクリック）
+  // ピンをクリックしたときの処理
   const handlePinClick = (pin: Pin) => {
     // 既に選択中のピンをクリックした場合は選択を解除
     if (selectedPinId === pin.id) {
@@ -176,20 +152,18 @@ function ViewerContent() {
     };
   }, [selectedPinId, floors]); // 依存配列を更新
 
-  if (loading) {
+  // ロード中表示
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <LoadingIndicator
-            progress={loadingProgress}
-            message="データを読み込み中..."
-            isFullScreen={false}
-          />
+          <LoadingIndicator message="データを読み込み中..." isFullScreen={false} />
         </div>
       </div>
     );
   }
 
+  // エラー表示
   if (error || !mapData) {
     return (
       <div className="min-h-screen flex items-center justify-center">

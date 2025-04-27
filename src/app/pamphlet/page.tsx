@@ -1,93 +1,79 @@
-// app/pamphlet/page.tsx
-
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { MapData, Floor, Pin } from '@/types/map-types';
+import { useUIStore } from '@/lib/store';
+import { useViewerData } from '@/lib/api-hooks';
+import { Floor, Pin, MapData } from '@/types/map-types';
 
 function PamphletContent() {
   const searchParams = useSearchParams();
   const mapId = searchParams.get('id') || '';
   const floorId = searchParams.get('floor') || '';
+  const { error, setError } = useUIStore();
 
+  // TanStack Query を使用してデータを取得
+  const { data, isLoading, isError } = useViewerData(mapId);
+
+  // ローカル状態
   const [mapData, setMapData] = useState<MapData | null>(null);
   const [floors, setFloors] = useState<Floor[]>([]);
   const [pins, setPins] = useState<Pin[]>([]);
   const [activeFloor, setActiveFloor] = useState<Floor | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageRatio, setImageRatio] = useState({ width: 0, height: 0 });
 
+  // refs
   const containerRef = useRef<HTMLDivElement>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // データ読み込み
+  // エラー処理
   useEffect(() => {
-    if (!mapId) {
-      setError('マップIDが指定されていません');
-      setLoading(false);
-      return;
+    if (isError) {
+      setError('データの取得に失敗しました');
     }
+  }, [isError, setError]);
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+  // 取得したデータを整理
+  useEffect(() => {
+    if (!data) return;
 
-        // APIからマップデータを取得
-        const response = await fetch(`/api/viewer/${mapId}`);
+    try {
+      setMapData(data.map);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'データの取得に失敗しました');
-        }
-
-        const data = await response.json();
-
-        // データを設定
-        setMapData(data.map);
-
-        // URLでフロアが指定されているか確認
-        if (floorId) {
-          // 指定されたフロアだけをセット
-          const selectedFloor = data.floors.find((f: Floor) => f.id === floorId);
-          if (selectedFloor) {
-            setFloors([selectedFloor]);
-            setActiveFloor(selectedFloor);
-            // 選択したフロアのピンだけをフィルタリング
-            setPins(data.pins.filter((p: Pin) => p.floor_id === floorId));
-          } else {
-            // 指定されたフロアが見つからない場合は最初のフロアを表示
-            setFloors([data.floors[0]]);
-            setActiveFloor(data.floors[0]);
-            setPins(data.pins.filter((p: Pin) => p.floor_id === data.floors[0].id));
-          }
+      // URLでフロアが指定されているか確認
+      if (floorId) {
+        // 指定されたフロアだけをセット
+        const selectedFloor = data.floors.find((f: Floor) => f.id === floorId);
+        if (selectedFloor) {
+          setFloors([selectedFloor]);
+          setActiveFloor(selectedFloor);
+          // 選択したフロアのピンだけをフィルタリング
+          setPins(data.pins.filter((p: Pin) => p.floor_id === floorId));
         } else {
-          // フロアが指定されていない場合は最初のフロアを表示
-          if (data.floors.length > 0) {
-            setFloors([data.floors[0]]);
-            setActiveFloor(data.floors[0]);
-            setPins(data.pins.filter((p: Pin) => p.floor_id === data.floors[0].id));
-          } else {
-            setFloors([]);
-            setPins([]);
-          }
+          // 指定されたフロアが見つからない場合は最初のフロアを表示
+          setFloors([data.floors[0]]);
+          setActiveFloor(data.floors[0]);
+          setPins(data.pins.filter((p: Pin) => p.floor_id === data.floors[0].id));
         }
-
-        setError(null);
-      } catch (error) {
-        console.error('データの取得エラー:', error);
-        setError(error instanceof Error ? error.message : 'データの取得に失敗しました');
-      } finally {
-        setLoading(false);
+      } else {
+        // フロアが指定されていない場合は最初のフロアを表示
+        if (data.floors.length > 0) {
+          setFloors([data.floors[0]]);
+          setActiveFloor(data.floors[0]);
+          setPins(data.pins.filter((p: Pin) => p.floor_id === data.floors[0].id));
+        } else {
+          setFloors([]);
+          setPins([]);
+        }
       }
-    };
-
-    fetchData();
-  }, [mapId, floorId]);
+    } catch (error) {
+      console.error('データの処理エラー:', error);
+      setError('データの処理に失敗しました');
+    }
+  }, [data, floorId, setError]);
 
   // 印刷ボタンのクリックハンドラ
   const handlePrint = () => {
@@ -104,7 +90,8 @@ function PamphletContent() {
     setImageLoaded(true);
   };
 
-  if (loading) {
+  // ローディング中表示
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -115,6 +102,7 @@ function PamphletContent() {
     );
   }
 
+  // エラー表示
   if (error || !mapData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
